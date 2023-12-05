@@ -11,25 +11,21 @@ use nom::{
 
 #[derive(Debug, Clone, Copy)]
 struct Range {
-    start: u64,
-    length: u64,
+    start: u64, // inclusive
+    end: u64,   // exclusive
 }
 
 impl Range {
-    fn new(start: u64, length: u64) -> Self {
-        Self { start, length }
-    }
-
-    fn end(self) -> u64 {
-        self.start + self.length
+    fn new(start: u64, end: u64) -> Self {
+        Self { start, end }
     }
 
     fn intersect(self, other: Range) -> Option<Range> {
         let max_start = std::cmp::max(self.start, other.start);
-        let min_end = std::cmp::min(self.end(), other.end());
+        let min_end = std::cmp::min(self.end, other.end);
 
         if max_start < min_end {
-            Some(Range::new(max_start, min_end - max_start))
+            Some(Range::new(max_start, min_end))
         } else {
             None
         }
@@ -37,7 +33,7 @@ impl Range {
 
     fn subtract(self, other: Range) -> Vec<Range> {
         // No overlap
-        if self.start >= other.end() || self.end() <= other.start {
+        if self.start >= other.end || self.end <= other.start {
             return vec![self];
         }
 
@@ -45,12 +41,12 @@ impl Range {
 
         // Partial overlap at the start of "self"
         if other.start > self.start {
-            result.push(Range::new(self.start, other.start - self.start));
+            result.push(Range::new(self.start, other.start));
         }
 
         // Partial overlap at the end of "self"
-        if other.end() < self.end() {
-            result.push(Range::new(other.end(), self.end() - other.end()));
+        if other.end < self.end {
+            result.push(Range::new(other.end, self.end));
         }
 
         result
@@ -85,7 +81,7 @@ impl Mapping {
         Ok((
             input,
             Self {
-                source_range: Range::new(source_range_start, range_length),
+                source_range: Range::new(source_range_start, source_range_start + range_length),
                 destination_range_start,
             },
         ))
@@ -95,7 +91,7 @@ impl Mapping {
         match range.intersect(self.source_range) {
             Some(intersect) => Some(Range::new(
                 intersect.start - self.source_range.start + self.destination_range_start,
-                intersect.length,
+                intersect.end - self.source_range.start + self.destination_range_start,
             )),
             None => None,
         }
@@ -111,8 +107,6 @@ struct Map {
 impl Map {
     fn parse(input: &str) -> IResult<&str, Self> {
         // seed-to-soil map:
-        // 50 98 2
-        // 52 50 48
 
         let (input, (source_category, _, destination_category, _, _, _)) =
             tuple((alpha0, tag("-to-"), alpha0, space1, tag("map:"), newline))(input)?;
@@ -180,7 +174,7 @@ impl Game {
     }
 
     fn part1(&self) -> Result<u64, Box<dyn Error>> {
-        let ranges: Vec<_> = self.seeds.iter().map(|&s| Range::new(s, 1)).collect();
+        let ranges: Vec<_> = self.seeds.iter().map(|&s| Range::new(s, s + 1)).collect();
 
         let min_value = self
             .find_category_ranges("seed", &ranges, "location")?
@@ -199,7 +193,7 @@ impl Game {
             .map(|chunk| {
                 let start = chunk[0];
                 let length = chunk[1];
-                Range::new(start, length)
+                Range::new(start, start + length)
             })
             .collect();
 
@@ -249,8 +243,8 @@ impl Game {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let (_, sample_game) = all_consuming(Game::parse)(include_str!("sample-input.txt"))?;
-    assert_eq!(sample_game.part1()?, 35);
-    assert_eq!(sample_game.part2()?, 46);
+    assert_eq!(sample_game.part1().ok(), Some(35));
+    assert_eq!(sample_game.part2().ok(), Some(46));
 
     let (_, game) = all_consuming(Game::parse)(include_str!("input.txt"))?;
     dbg!(game.part1()?);
