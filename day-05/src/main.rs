@@ -59,14 +59,12 @@ impl Range {
     fn subtract_ranges(self, ranges_to_subtract: &[Range]) -> Vec<Range> {
         let mut current_ranges = vec![self];
 
-        for range_to_subtract in ranges_to_subtract {
-            let mut new_ranges = Vec::new();
-
-            for current_range in current_ranges {
-                new_ranges.append(&mut current_range.subtract(*range_to_subtract));
-            }
-
-            current_ranges = new_ranges;
+        for &range_to_subtract in ranges_to_subtract {
+            current_ranges = current_ranges
+                .iter()
+                .map(|r| r.subtract(range_to_subtract).into_iter())
+                .flatten()
+                .collect();
         }
 
         current_ranges
