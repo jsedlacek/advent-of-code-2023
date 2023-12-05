@@ -180,7 +180,7 @@ impl Game {
     }
 
     fn part1(&self) -> Result<u64, Box<dyn Error>> {
-        let ranges: Vec<_> = self.seeds.iter().map(|s| Range::new(*s, 1)).collect();
+        let ranges: Vec<_> = self.seeds.iter().map(|&s| Range::new(s, 1)).collect();
 
         let min_value = self
             .find_category_ranges("seed", &ranges, "location")?
@@ -240,7 +240,7 @@ impl Game {
 
             ranges = ranges
                 .iter()
-                .map(|r| map.map(*r).into_iter())
+                .map(|&r| map.map(r).into_iter())
                 .flatten()
                 .collect();
         }
