@@ -50,13 +50,15 @@ impl Game {
 
     fn parse_list_as_number(input: &str) -> IResult<&str, u64> {
         map_res(recognize(Self::parse_list), |s: &str| {
-            let s: String = s.chars().filter(|c| !c.is_whitespace()).collect();
-            s.parse::<u64>()
+            s.chars()
+                .filter(|c| !c.is_whitespace())
+                .collect::<String>()
+                .parse::<u64>()
         })(input)
     }
 
     fn puzzle(&self) -> u64 {
-        self.races.iter().map(|r| r.record_count()).product()
+        self.races.iter().map(Race::record_count).product()
     }
 }
 
