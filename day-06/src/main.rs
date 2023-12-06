@@ -15,11 +15,11 @@ impl Game {
     fn parse1(input: &str) -> IResult<&str, Self> {
         // Time:      7  15   30
         let (input, (_, _, time_list, _)) =
-            tuple((tag("Time:"), space0, separated_list0(space1, u64), newline))(input)?;
+            tuple((tag("Time:"), space0, Self::parse_list, newline))(input)?;
 
         // Distance:  9  40  200
         let (input, (_, _, distance_list)) =
-            tuple((tag("Distance:"), space0, separated_list0(space1, u64)))(input)?;
+            tuple((tag("Distance:"), space0, Self::parse_list))(input)?;
 
         let races = time_list
             .iter()
@@ -32,29 +32,27 @@ impl Game {
 
     fn parse2(input: &str) -> IResult<&str, Self> {
         // Time:      7  15   30
-        let (input, (_, _, time, _)) = tuple((
-            tag("Time:"),
-            space0,
-            map_res(recognize(separated_list0(space1, u64)), |time: &str| {
-                let time: String = time.chars().filter(|c| !c.is_whitespace()).collect();
-                time.parse::<u64>()
-            }),
-            newline,
-        ))(input)?;
+        let (input, (_, _, time, _)) =
+            tuple((tag("Time:"), space0, Self::parse_list_as_number, newline))(input)?;
 
         // Distance:  9  40  200
-        let (input, (_, _, distance)) = tuple((
-            tag("Distance:"),
-            space0,
-            map_res(recognize(separated_list0(space1, u64)), |time: &str| {
-                let time: String = time.chars().filter(|c| !c.is_whitespace()).collect();
-                time.parse::<u64>()
-            }),
-        ))(input)?;
+        let (input, (_, _, distance)) =
+            tuple((tag("Distance:"), space0, Self::parse_list_as_number))(input)?;
 
         let race = Race::new(time, distance);
 
         Ok((input, Self { races: vec![race] }))
+    }
+
+    fn parse_list(input: &str) -> IResult<&str, Vec<u64>> {
+        separated_list0(space1, u64)(input)
+    }
+
+    fn parse_list_as_number(input: &str) -> IResult<&str, u64> {
+        map_res(recognize(Self::parse_list), |s: &str| {
+            let s: String = s.chars().filter(|c| !c.is_whitespace()).collect();
+            s.parse::<u64>()
+        })(input)
     }
 
     fn puzzle(&self) -> u64 {
