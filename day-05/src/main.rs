@@ -242,13 +242,21 @@ impl Game {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let (_, sample_game) = all_consuming(Game::parse)(include_str!("sample-input.txt"))?;
-    assert_eq!(sample_game.part1().ok(), Some(35));
-    assert_eq!(sample_game.part2().ok(), Some(46));
-
     let (_, game) = all_consuming(Game::parse)(include_str!("input.txt"))?;
     dbg!(game.part1()?);
     dbg!(game.part2()?);
 
     Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let (_, sample_game) = all_consuming(Game::parse)(include_str!("sample-input.txt")).unwrap();
+    assert_eq!(sample_game.part1().unwrap(), 35);
+}
+
+#[test]
+fn test_part2() {
+    let (_, sample_game) = all_consuming(Game::parse)(include_str!("sample-input.txt")).unwrap();
+    assert_eq!(sample_game.part2().unwrap(), 46);
 }
