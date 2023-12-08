@@ -9,18 +9,30 @@ use nom::{
     IResult,
 };
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+enum GameVersion {
+    V1,
+    V2,
+}
+
 struct Game {
     rounds: Vec<Round>,
 }
 
 impl Game {
-    fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, rounds) = separated_list0(newline, Round::parse)(input)?;
+    fn parse_1(input: &str) -> IResult<&str, Self> {
+        let (input, rounds) = separated_list0(newline, Round::parse_1)(input)?;
 
         Ok((input, Self { rounds }))
     }
 
-    fn part1(&self) -> u64 {
+    fn parse_2(input: &str) -> IResult<&str, Self> {
+        let (input, rounds) = separated_list0(newline, Round::parse_2)(input)?;
+
+        Ok((input, Self { rounds }))
+    }
+
+    fn puzzle(&self) -> u64 {
         let mut rounds = self.rounds.clone();
 
         rounds.sort_by_key(|r| r.hand.clone());
@@ -43,9 +55,17 @@ struct Round {
 }
 
 impl Round {
-    fn parse(input: &str) -> IResult<&str, Self> {
+    fn parse_1(input: &str) -> IResult<&str, Self> {
         // 32T3K 765
-        map(tuple((Hand::parse, space1, u64)), |(hand, _, bid)| Self {
+        map(tuple((Hand::parse_1, space1, u64)), |(hand, _, bid)| Self {
+            hand,
+            bid,
+        })(input)
+    }
+
+    fn parse_2(input: &str) -> IResult<&str, Self> {
+        // 32T3K 765
+        map(tuple((Hand::parse_2, space1, u64)), |(hand, _, bid)| Self {
             hand,
             bid,
         })(input)
@@ -55,12 +75,24 @@ impl Round {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Hand {
     cards: Vec<Card>,
+    version: GameVersion,
 }
 
 impl Hand {
-    fn parse(input: &str) -> IResult<&str, Hand> {
+    fn parse_1(input: &str) -> IResult<&str, Hand> {
         // 32T3K
-        map(many_m_n(5, 5, Card::parse), |cards| Self { cards })(input)
+        map(many_m_n(5, 5, Card::parse_1), |cards| Self {
+            cards,
+            version: GameVersion::V1,
+        })(input)
+    }
+
+    fn parse_2(input: &str) -> IResult<&str, Hand> {
+        // 32T3K
+        map(many_m_n(5, 5, Card::parse_2), |cards| Self {
+            cards,
+            version: GameVersion::V2,
+        })(input)
     }
 
     fn get_type(&self) -> HandType {
@@ -68,9 +100,18 @@ impl Hand {
 
         for &c in &self.cards {
             card_map
-                .entry(c)
+                .entry(c.0)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
+        }
+
+        if self.version == GameVersion::V2 {
+            if card_map.get(&'J').is_some() && card_map.len() > 1 {
+                let &joker_count = card_map.get(&'J').unwrap();
+                card_map.remove(&'J');
+                let (&card, &count) = card_map.iter().max_by_key(|(_, &count)| count).unwrap();
+                card_map.insert(card, count + joker_count);
+            }
         }
 
         let mut count_map = HashMap::new();
@@ -148,19 +189,29 @@ const HAND_TYPE_VALUES: [HandType; 7] = [
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct Card(char);
+struct Card(char, GameVersion);
 
-const CARD_VALUES: &str = "23456789TJQKA";
+const CARD_VALUES_1: &str = "23456789TJQKA";
+const CARD_VALUES_2: &str = "J23456789TQKA";
 
 impl Card {
-    fn parse(input: &str) -> IResult<&str, Self> {
+    fn parse_1(input: &str) -> IResult<&str, Self> {
         // T
 
-        map(one_of(CARD_VALUES), |c| Self(c))(input)
+        map(one_of(CARD_VALUES_1), |c| Self(c, GameVersion::V1))(input)
+    }
+
+    fn parse_2(input: &str) -> IResult<&str, Self> {
+        // T
+
+        map(one_of(CARD_VALUES_2), |c| Self(c, GameVersion::V1))(input)
     }
 
     fn value(self) -> Option<usize> {
-        CARD_VALUES.find(self.0)
+        match self.1 {
+            GameVersion::V1 => CARD_VALUES_1.find(self.0),
+            GameVersion::V2 => CARD_VALUES_2.find(self.0),
+        }
     }
 }
 
@@ -177,14 +228,24 @@ impl PartialOrd for Card {
 }
 
 fn main() {
-    let (_, game) = Game::parse(include_str!("input.txt")).unwrap();
+    let (_, game1) = Game::parse_1(include_str!("input.txt")).unwrap();
 
-    dbg!(game.part1());
+    dbg!(game1.puzzle());
+
+    let (_, game2) = Game::parse_2(include_str!("input.txt")).unwrap();
+    dbg!(game2.puzzle());
 }
 
 #[test]
 fn part1() {
-    let (_, game) = Game::parse(include_str!("sample-input.txt")).unwrap();
+    let (_, game) = Game::parse_1(include_str!("sample-input.txt")).unwrap();
 
-    assert_eq!(game.part1(), 6440);
+    assert_eq!(game.puzzle(), 6440);
+}
+
+#[test]
+fn part2() {
+    let (_, game) = Game::parse_2(include_str!("sample-input.txt")).unwrap();
+
+    assert_eq!(game.puzzle(), 5905);
 }
