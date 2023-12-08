@@ -1,16 +1,18 @@
 mod lcm;
+mod node;
 
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alphanumeric0, newline, space0},
+    character::complete::newline,
     combinator::{all_consuming, map},
     multi::{many0, separated_list0},
-    sequence::{terminated, tuple},
+    sequence::terminated,
     IResult,
 };
 
 use lcm::lcm_of_vec;
+use node::Node;
 
 #[derive(Debug)]
 struct Graph {
@@ -58,8 +60,6 @@ impl Graph {
 
         let steps: Vec<_> = node_ids.iter().map(|id| self.find_steps(id)).collect();
 
-        dbg!(&steps);
-
         lcm_of_vec(&steps)
     }
 
@@ -93,43 +93,6 @@ impl Graph {
 enum Instruction {
     Left,
     Right,
-}
-
-#[derive(Debug)]
-struct Node {
-    id: String,
-    left: String,
-    right: String,
-}
-
-impl Node {
-    fn parse(input: &str) -> IResult<&str, Self> {
-        // AAA = (BBB, CCC)
-        let (input, (id, _, _, _, _, _, left, _, _, _, right, _, _)) = tuple((
-            alphanumeric0,
-            space0,
-            tag("="),
-            space0,
-            tag("("),
-            space0,
-            alphanumeric0,
-            space0,
-            tag(","),
-            space0,
-            alphanumeric0,
-            space0,
-            tag(")"),
-        ))(input)?;
-
-        Ok((
-            input,
-            Self {
-                id: id.to_string(),
-                left: left.to_string(),
-                right: right.to_string(),
-            },
-        ))
-    }
 }
 
 fn main() {
