@@ -1,15 +1,24 @@
+use std::num::ParseIntError;
+
 struct Game {
     inputs: Vec<Vec<i64>>,
 }
 
 impl Game {
-    fn parse(input: &str) -> Self {
+    fn parse(input: &str) -> Result<Self, ParseIntError> {
         let inputs = input
             .lines()
-            .map(|l| l.split(" ").map(|v| v.parse().unwrap()).collect())
-            .collect();
+            .map(|l| {
+                l.split(" ")
+                    .map(|v| {
+                        let r = v.parse();
+                        r
+                    })
+                    .collect()
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-        Self { inputs }
+        Ok(Self { inputs })
     }
 
     fn diff(sequence: &Vec<i64>) -> Vec<i64> {
@@ -51,7 +60,7 @@ impl Game {
 }
 
 fn main() {
-    let game = Game::parse(include_str!("input.txt"));
+    let game = Game::parse(include_str!("input.txt")).unwrap();
 
     dbg!(game.part1());
     dbg!(game.part2());
@@ -59,14 +68,14 @@ fn main() {
 
 #[test]
 fn part1() {
-    let game = Game::parse(include_str!("sample-input.txt"));
+    let game = Game::parse(include_str!("sample-input.txt")).unwrap();
 
     assert_eq!(game.part1(), 114);
 }
 
 #[test]
 fn part2() {
-    let game = Game::parse(include_str!("sample-input.txt"));
+    let game = Game::parse(include_str!("sample-input.txt")).unwrap();
 
     assert_eq!(game.part2(), 2);
 }
