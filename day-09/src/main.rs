@@ -54,23 +54,29 @@ impl Game {
     }
 }
 
-fn main() {
-    let game = Game::parse(include_str!("input.txt")).unwrap();
+fn main() -> Result<()> {
+    let game = Game::parse(include_str!("input.txt"))?;
 
-    dbg!(game.part1().unwrap());
-    dbg!(game.part2().unwrap());
+    dbg!(game.part1()?);
+    dbg!(game.part2()?);
+
+    Ok(())
 }
 
 #[test]
-fn part1() {
-    let game = Game::parse(include_str!("sample-input.txt")).unwrap();
+fn part1() -> Result<()> {
+    let game = Game::parse(include_str!("sample-input.txt"))?;
 
-    assert!(matches!(game.part1(), Ok(114)));
+    assert_eq!(game.part1()?, 114);
+
+    Ok(())
 }
 
 #[test]
-fn part2() {
-    let game = Game::parse(include_str!("sample-input.txt")).unwrap();
+fn part2() -> Result<()> {
+    let game = Game::parse(include_str!("sample-input.txt"))?;
 
-    assert!(matches!(game.part2(), Ok(2)));
+    assert_eq!(game.part2()?, 2);
+
+    Ok(())
 }
