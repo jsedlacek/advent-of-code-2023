@@ -12,12 +12,8 @@ impl Game {
         Self { inputs }
     }
 
-    fn next_prediction(sequence: &Vec<i64>) -> i64 {
-        if sequence.iter().all(|&i| i == 0) {
-            return 0;
-        }
-
-        let differences: Vec<i64> = sequence
+    fn diff(sequence: &Vec<i64>) -> Vec<i64> {
+        sequence
             .windows(2)
             .map(|window| {
                 if let [a, b] = window {
@@ -26,9 +22,15 @@ impl Game {
                     panic!("Invalid window")
                 }
             })
-            .collect();
+            .collect()
+    }
 
-        Self::next_prediction(&differences) + sequence.last().unwrap()
+    fn next_prediction(sequence: &Vec<i64>) -> i64 {
+        if sequence.iter().all(|&i| i == 0) {
+            return 0;
+        }
+
+        sequence.last().unwrap() + Self::next_prediction(&Self::diff(sequence))
     }
 
     fn prev_prediction(sequence: &Vec<i64>) -> i64 {
@@ -36,18 +38,7 @@ impl Game {
             return 0;
         }
 
-        let differences: Vec<i64> = sequence
-            .windows(2)
-            .map(|window| {
-                if let [a, b] = window {
-                    b - a
-                } else {
-                    panic!("Invalid window")
-                }
-            })
-            .collect();
-
-        sequence.first().unwrap() - Self::prev_prediction(&differences)
+        sequence.first().unwrap() - Self::prev_prediction(&Self::diff(sequence))
     }
 
     fn part1(&self) -> i64 {
