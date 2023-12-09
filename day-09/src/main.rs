@@ -1,11 +1,11 @@
-use std::num::ParseIntError;
+use anyhow::{anyhow, Result};
 
 struct Game {
     inputs: Vec<Vec<i64>>,
 }
 
 impl Game {
-    fn parse(input: &str) -> Result<Self, ParseIntError> {
+    fn parse(input: &str) -> Result<Self> {
         let inputs = input
             .lines()
             .map(|l| l.split(' ').map(|v| v.parse()).collect())
@@ -27,31 +27,29 @@ impl Game {
             .collect()
     }
 
-    fn next_prediction(sequence: &[i64]) -> Result<i64, String> {
+    fn next_prediction(sequence: &[i64]) -> Result<i64> {
         if sequence.iter().all(|&i| i == 0) {
             return Ok(0);
         }
 
-        Ok(
-            sequence.last().ok_or("Empty sequence")?
-                + Self::next_prediction(&Self::diff(sequence))?,
-        )
+        Ok(sequence.last().ok_or(anyhow!("Empty sequence"))?
+            + Self::next_prediction(&Self::diff(sequence))?)
     }
 
-    fn prev_prediction(sequence: &[i64]) -> Result<i64, String> {
+    fn prev_prediction(sequence: &[i64]) -> Result<i64> {
         if sequence.iter().all(|&i| i == 0) {
             return Ok(0);
         }
 
-        Ok(sequence.first().ok_or("Empty sequence")?
+        Ok(sequence.first().ok_or(anyhow!("Empty sequence"))?
             - Self::prev_prediction(&Self::diff(sequence))?)
     }
 
-    fn part1(&self) -> Result<i64, String> {
+    fn part1(&self) -> Result<i64> {
         self.inputs.iter().map(|i| Self::next_prediction(i)).sum()
     }
 
-    fn part2(&self) -> Result<i64, String> {
+    fn part2(&self) -> Result<i64> {
         self.inputs.iter().map(|i| Self::prev_prediction(i)).sum()
     }
 }
@@ -67,12 +65,12 @@ fn main() {
 fn part1() {
     let game = Game::parse(include_str!("sample-input.txt")).unwrap();
 
-    assert_eq!(game.part1(), Ok(114));
+    assert!(matches!(game.part1(), Ok(114)));
 }
 
 #[test]
 fn part2() {
     let game = Game::parse(include_str!("sample-input.txt")).unwrap();
 
-    assert_eq!(game.part2(), Ok(2));
+    assert!(matches!(game.part2(), Ok(2)));
 }
