@@ -238,12 +238,8 @@ impl Spring {
     }
 }
 
-fn factorial(n: u128) -> u128 {
-    (1..=n).product()
-}
-
 fn combinations(n: u128, r: u128) -> u128 {
-    (r + 1..=r + n - 1).product::<u128>() / factorial(n - 1)
+    (r + 1..=r + n - 1).product::<u128>() / (1..=n - 1).product::<u128>()
 }
 
 fn main() -> Result<()> {
