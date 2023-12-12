@@ -1,5 +1,4 @@
 use anyhow::Result;
-use num_bigint::{BigUint, ToBigUint};
 
 use nom::{
     branch::alt,
@@ -239,22 +238,12 @@ impl Spring {
     }
 }
 
-fn factorial(n: u128) -> BigUint {
-    let mut res = 1.to_biguint().unwrap();
-
-    for i in 1..=n {
-        res *= i;
-    }
-
-    res
-
-    // (1..=n).product()
+fn factorial(n: u128) -> u128 {
+    (1..=n).product()
 }
 
 fn combinations(n: u128, r: u128) -> u128 {
-    let res = factorial(r + n - 1) / (factorial(r) * factorial(n - 1));
-
-    format!("{res}").parse().unwrap()
+    (r + 1..=r + n - 1).product::<u128>() / factorial(n - 1)
 }
 
 fn main() -> Result<()> {
