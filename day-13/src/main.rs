@@ -82,33 +82,15 @@ impl Pattern {
     }
 
     fn are_columns_eq(&self, a: u64, b: u64) -> bool {
-        for y in 0..=self.max_y {
-            if self.map.get(&(a, y)) != self.map.get(&(b, y)) {
-                return false;
-            }
-        }
-
-        return true;
+        (0..=self.max_y).all(|y| self.map.get(&(a, y)) == self.map.get(&(b, y)))
     }
 
     fn are_rows_eq(&self, a: u64, b: u64) -> bool {
-        for x in 0..=self.max_x {
-            if self.map.get(&(x, a)) != self.map.get(&(x, b)) {
-                return false;
-            }
-        }
-
-        return true;
+        (0..=self.max_x).all(|x| self.map.get(&(x, a)) == self.map.get(&(x, b)))
     }
 
     fn is_vertical_symmetry(&self, x: u64) -> bool {
-        for diff in 0..=(x.min(self.max_x - (x + 1))) {
-            if !self.are_columns_eq(x - diff, x + 1 + diff) {
-                return false;
-            }
-        }
-
-        return true;
+        (0..=(x.min(self.max_x - (x + 1)))).all(|diff| self.are_columns_eq(x - diff, x + 1 + diff))
     }
 
     fn find_vertical_symmetry(&self) -> HashSet<u64> {
@@ -124,13 +106,7 @@ impl Pattern {
     }
 
     fn is_horizontal_symmetry(&self, y: u64) -> bool {
-        for diff in 0..=(y.min(self.max_y - (y + 1))) {
-            if !self.are_rows_eq(y - diff, y + 1 + diff) {
-                return false;
-            }
-        }
-
-        return true;
+        (0..=(y.min(self.max_y - (y + 1)))).all(|diff| self.are_rows_eq(y - diff, y + 1 + diff))
     }
 
     fn find_horizontal_symmetry(&self) -> HashSet<u64> {
