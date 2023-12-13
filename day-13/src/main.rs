@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -32,8 +32,14 @@ impl Game {
         self.patterns.iter().map(|p| p.value()).sum::<u64>()
     }
 
-    fn part2(&self) -> u64 {
-        self.patterns.iter().map(|p| p.value2()).sum::<u64>()
+    fn part2(&self) -> Result<u64> {
+        Ok(self
+            .patterns
+            .iter()
+            .map(|p| p.value2())
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .sum::<u64>())
     }
 }
 
@@ -129,15 +135,12 @@ impl Pattern {
         self.find_symmetry().iter().sum()
     }
 
-    fn value2(&self) -> u64 {
+    fn value2(&self) -> Result<u64> {
         let mut clone = self.clone();
         let original_value = self.find_symmetry();
 
         for (&key, &value) in self.map.iter() {
-            let new_value = match value {
-                Tile::Ash => Tile::Rock,
-                Tile::Rock => Tile::Ash,
-            };
+            let new_value = value.inverse();
 
             clone.map.insert(key, new_value);
             let result = clone.find_symmetry();
@@ -145,13 +148,13 @@ impl Pattern {
             let result: HashSet<_> = result.difference(&original_value).copied().collect();
 
             if result.len() == 1 {
-                return result.iter().sum::<u64>();
+                return Ok(result.iter().sum::<u64>());
             }
 
             clone.map.insert(key, value);
         }
 
-        panic!("No value");
+        Err(anyhow!("No value"))
     }
 }
 
@@ -165,6 +168,13 @@ impl Tile {
     fn parse(input: &str) -> IResult<&str, Self> {
         alt((map(tag("."), |_| Self::Ash), map(tag("#"), |_| Self::Rock)))(input)
     }
+
+    fn inverse(&self) -> Self {
+        match self {
+            Self::Ash => Self::Rock,
+            Self::Rock => Self::Ash,
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -172,7 +182,7 @@ fn main() -> Result<()> {
 
     dbg!(game.part1());
 
-    dbg!(game.part2());
+    dbg!(game.part2()?);
 
     Ok(())
 }
