@@ -18,14 +18,14 @@ struct Game {
 
 impl Game {
     fn parse(input: &str) -> IResult<&str, Self> {
-        map(
-            all_consuming(delimited(
-                many0(newline),
+        all_consuming(delimited(
+            many0(newline),
+            map(
                 separated_list0(many1(newline), Pattern::parse),
-                many0(newline),
-            )),
-            |patterns| Self { patterns },
-        )(input)
+                |patterns| Self { patterns },
+            ),
+            many0(newline),
+        ))(input)
     }
 
     fn part1(&self) -> u64 {
