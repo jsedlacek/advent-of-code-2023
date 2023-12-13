@@ -29,11 +29,7 @@ impl Game {
     }
 
     fn part1(&self) -> u64 {
-        self.patterns
-            .iter()
-            .map(|p| p.value())
-            .flatten()
-            .sum::<u64>()
+        self.patterns.iter().map(|p| p.value()).sum::<u64>()
     }
 
     fn part2(&self) -> u64 {
@@ -121,7 +117,7 @@ impl Pattern {
             .collect()
     }
 
-    fn value(&self) -> HashSet<u64> {
+    fn find_symmetry(&self) -> HashSet<u64> {
         self.find_vertical_symmetry()
             .union(&self.find_horizontal_symmetry())
             .into_iter()
@@ -129,9 +125,13 @@ impl Pattern {
             .collect()
     }
 
+    fn value(&self) -> u64 {
+        self.find_symmetry().iter().sum()
+    }
+
     fn value2(&self) -> u64 {
         let mut clone = self.clone();
-        let original_value = self.value();
+        let original_value = self.find_symmetry();
 
         for (&key, &value) in self.map.iter() {
             let new_value = match value {
@@ -140,7 +140,7 @@ impl Pattern {
             };
 
             clone.map.insert(key, new_value);
-            let result = clone.value();
+            let result = clone.find_symmetry();
 
             let result: HashSet<_> = result.difference(&original_value).copied().collect();
 
