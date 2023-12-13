@@ -5,7 +5,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::newline,
-    combinator::{all_consuming, map},
+    combinator::{all_consuming, map, value},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::delimited,
     IResult,
@@ -166,7 +166,7 @@ enum Tile {
 
 impl Tile {
     fn parse(input: &str) -> IResult<&str, Self> {
-        alt((map(tag("."), |_| Self::Ash), map(tag("#"), |_| Self::Rock)))(input)
+        alt((value(Self::Ash, tag(".")), value(Self::Rock, tag("#"))))(input)
     }
 
     fn inverse(&self) -> Self {
