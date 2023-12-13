@@ -6,6 +6,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::newline,
     combinator::{all_consuming, map, value},
+    error::{Error, ErrorKind},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::delimited,
     IResult,
@@ -56,20 +57,6 @@ impl Pattern {
 
         let mut map = HashMap::new();
 
-        let max_x = pattern
-            .iter()
-            .map(|line| line.iter().enumerate().map(|(x, _)| x as u64))
-            .flatten()
-            .max()
-            .unwrap_or(0);
-
-        let max_y = pattern
-            .iter()
-            .enumerate()
-            .map(|(y, _)| y as u64)
-            .max()
-            .unwrap_or(0);
-
         for (y, line) in pattern.iter().enumerate() {
             let y = y as u64;
 
@@ -79,6 +66,9 @@ impl Pattern {
                 map.insert((x, y), tile);
             }
         }
+
+        let max_x = map.keys().copied().map(|(x, _)| x).max().unwrap_or(0);
+        let max_y = map.keys().copied().map(|(_, y)| y).max().unwrap_or(0);
 
         Ok((input, Self { map, max_x, max_y }))
     }
