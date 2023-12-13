@@ -55,22 +55,25 @@ impl Pattern {
 
         let mut map = HashMap::new();
 
-        let mut max_x = 0;
-        let mut max_y = 0;
+        let max_x = pattern
+            .iter()
+            .map(|(line)| line.iter().enumerate().map(|(x, _)| x as u64))
+            .flatten()
+            .max()
+            .unwrap_or(0);
+
+        let max_y = pattern
+            .iter()
+            .enumerate()
+            .map(|(y, _)| y as u64)
+            .max()
+            .unwrap_or(0);
 
         for (y, line) in pattern.iter().enumerate() {
             let y = y as u64;
 
-            if y > max_y {
-                max_y = y;
-            }
-
             for (x, &tile) in line.iter().enumerate() {
                 let x = x as u64;
-
-                if x > max_x {
-                    max_x = x;
-                }
 
                 map.insert((x, y), tile);
             }
