@@ -148,6 +148,29 @@ impl Game {
         }
     }
 
+    fn tilt_multiple_rounds(&mut self, rounds: usize) {
+        let mut history: HashMap<usize, Game> = HashMap::new();
+
+        let mut index = 0;
+
+        while index < rounds {
+            self.tilt_round();
+            index += 1;
+
+            for (history_index, history_game) in &history {
+                if self == history_game {
+                    let diff = index - history_index;
+
+                    let remaining_index = rounds - index;
+
+                    index += (remaining_index / diff) * diff;
+                }
+            }
+
+            history.insert(index, self.clone());
+        }
+    }
+
     fn puzzle(&self) -> u64 {
         (0..=self.max_y)
             .map(|y| {
@@ -220,28 +243,7 @@ fn main() -> Result<()> {
 
     let mut game2 = game.clone();
 
-    let mut history: HashMap<usize, Game> = HashMap::new();
-
-    let mut index = 0;
-
-    let rounds = 1_000_000_000;
-
-    while index < rounds {
-        game2.tilt_round();
-        index += 1;
-
-        for (history_index, history_game) in &history {
-            if game2 == *history_game {
-                let diff = index - history_index;
-
-                let remaining_index = rounds - index;
-
-                index += (remaining_index / diff) * diff;
-            }
-        }
-
-        history.insert(index, game2.clone());
-    }
+    game2.tilt_multiple_rounds(1_000_000_000);
 
     println!("Part 2 {}", game2.puzzle());
 
