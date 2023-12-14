@@ -1,4 +1,6 @@
-use std::{collections::HashMap, error::Error, ops::RangeInclusive};
+use std::{collections::HashMap, ops::RangeInclusive};
+
+use anyhow::Result;
 
 #[derive(Debug)]
 struct Game {
@@ -7,7 +9,7 @@ struct Game {
 }
 
 impl Game {
-    fn parse(input: &str) -> Result<Game, Box<dyn Error>> {
+    fn parse(input: &str) -> Result<Game> {
         let mut map = HashMap::new();
 
         let mut width = 0;
@@ -39,15 +41,18 @@ impl Game {
         })
     }
 
-    fn part1(&self) -> u32 {
-        self.find_numbers()
-            .iter()
+    fn part1(&self) -> Result<u32> {
+        Ok(self
+            .find_numbers()
+            .into_iter()
             .filter(|n| self.is_part_number(n))
             .map(|n| n.value())
-            .sum()
+            .collect::<Result<Vec<_>>>()?
+            .iter()
+            .sum())
     }
 
-    fn part2(&self) -> u32 {
+    fn part2(&self) -> Result<u32> {
         let gears = self.find_gears();
         let numbers = self.find_numbers();
 
@@ -62,11 +67,19 @@ impl Game {
                     })
                     .collect();
 
-                if adjacent_numbers.len() == 2 {
-                    Some(adjacent_numbers.iter().map(|n| n.value()).product::<u32>())
+                if let [a, b] = adjacent_numbers[..] {
+                    Some([a, b])
                 } else {
                     None
                 }
+            })
+            .map(|numbers| -> Result<u32> {
+                Ok(numbers
+                    .into_iter()
+                    .map(|n| n.value())
+                    .collect::<Result<Vec<_>>>()?
+                    .into_iter()
+                    .product::<u32>())
             })
             .sum()
     }
@@ -84,11 +97,9 @@ impl Game {
                         Some(ref mut number) => number.add_part(x, *n),
                         None => current_number = Some(Number::new(y, x, *n)),
                     }
-                } else {
-                    if let Some(number) = current_number {
-                        numbers.push(number);
-                        current_number = None;
-                    }
+                } else if let Some(number) = current_number {
+                    numbers.push(number);
+                    current_number = None;
                 }
             }
         }
@@ -130,7 +141,7 @@ enum Cell {
 }
 
 impl Cell {
-    fn parse(input: char) -> Result<Option<Self>, Box<dyn Error>> {
+    fn parse(input: char) -> Result<Option<Self>> {
         match input {
             '0'..='9' => Ok(Some(Cell::Number(input.to_string().parse()?))),
             '.' => Ok(None),
@@ -176,21 +187,32 @@ impl Number {
         (x_start..=x_end, y_start..=y_end)
     }
 
-    fn value(&self) -> u32 {
-        self.number.parse::<u32>().unwrap()
+    fn value(&self) -> Result<u32> {
+        Ok(self.number.parse::<u32>()?)
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let sample_game = Game::parse(include_str!("sample-input.txt"))?;
-
-    assert_eq!(sample_game.part1(), 4361);
-    assert_eq!(sample_game.part2(), 467835);
-
+fn main() -> Result<()> {
     let game = Game::parse(include_str!("input.txt"))?;
 
-    dbg!(game.part1());
-    dbg!(game.part2());
+    println!("Part 1: {}", game.part1()?);
+    println!("Part 2: {}", game.part2()?);
+
+    Ok(())
+}
+
+#[test]
+fn part1() -> Result<()> {
+    let sample_game = Game::parse(include_str!("sample-input.txt"))?;
+    assert_eq!(sample_game.part1()?, 4361);
+
+    Ok(())
+}
+
+#[test]
+fn part2() -> Result<()> {
+    let sample_game = Game::parse(include_str!("sample-input.txt"))?;
+    assert_eq!(sample_game.part2()?, 467835);
 
     Ok(())
 }
