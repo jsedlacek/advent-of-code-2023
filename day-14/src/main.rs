@@ -149,7 +149,7 @@ impl Game {
     }
 
     fn tilt_multiple_rounds(&mut self, rounds: usize) {
-        let mut history: HashMap<usize, Game> = HashMap::new();
+        let mut history = Some(HashMap::new());
 
         let mut index = 0;
 
@@ -157,17 +157,34 @@ impl Game {
             self.tilt_round();
             index += 1;
 
-            for (history_index, history_game) in &history {
-                if self == history_game {
-                    let diff = index - history_index;
+            let history_index = if let Some(ref history) = history {
+                history
+                    .iter()
+                    .find_map(|(history_index, history_game)| {
+                        if history_game == self {
+                            Some(history_index)
+                        } else {
+                            None
+                        }
+                    })
+                    .copied()
+            } else {
+                None
+            };
 
-                    let remaining_index = rounds - index;
+            if let Some(history_index) = history_index {
+                let diff = index - history_index;
 
-                    index += (remaining_index / diff) * diff;
-                }
+                let remaining_index = rounds - index;
+
+                index += (remaining_index / diff) * diff;
+
+                history = None;
             }
 
-            history.insert(index, self.clone());
+            if let Some(ref mut history) = history {
+                history.insert(index, self.clone());
+            }
         }
     }
 
