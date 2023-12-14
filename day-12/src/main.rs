@@ -59,30 +59,27 @@ impl Row {
     }
 
     fn parse_2(input: &str) -> IResult<&str, Self> {
-        let (
-            input,
-            Self {
-                springs,
-                damaged_groups,
+        map(
+            Self::parse_1,
+            |Self {
+                 springs,
+                 damaged_groups,
+             }| {
+                let mut new_springs = springs.clone();
+                let mut new_damaged_groups = damaged_groups.clone();
+
+                for _ in 1..5 {
+                    new_springs.push(Spring::Unknown);
+                    new_springs.append(&mut springs.clone());
+                    new_damaged_groups.append(&mut damaged_groups.clone());
+                }
+
+                Self {
+                    springs: new_springs,
+                    damaged_groups: new_damaged_groups,
+                }
             },
-        ) = Self::parse_1(input)?;
-
-        let mut new_springs = springs.clone();
-        let mut new_damaged_groups = damaged_groups.clone();
-
-        for _ in 1..5 {
-            new_springs.push(Spring::Unknown);
-            new_springs.append(&mut springs.clone());
-            new_damaged_groups.append(&mut damaged_groups.clone());
-        }
-
-        Ok((
-            input,
-            Self {
-                springs: new_springs,
-                damaged_groups: new_damaged_groups,
-            },
-        ))
+        )(input)
     }
 
     fn valid_count(springs: &[Spring], damaged_groups: &[u128]) -> u128 {
