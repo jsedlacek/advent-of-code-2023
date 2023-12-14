@@ -1,6 +1,7 @@
 use nom::{
     bytes::complete::tag,
     character::complete::{space0, u32},
+    combinator::map,
     multi::separated_list0,
     sequence::{delimited, tuple},
     IResult,
@@ -16,17 +17,19 @@ pub struct Game {
 
 impl Game {
     pub fn parse(input: &str) -> IResult<&str, Game> {
-        // "Game 1: "
-        let (input, id) =
-            delimited(tuple((tag("Game"), space0)), u32, tuple((tag(":"), space0)))(input)?;
-
-        let (input, sets) = separated_list0(tuple((tag(";"), space0)), Set::parse)(input)?;
-
-        Ok((input, Game { id, sets }))
+        map(
+            tuple((
+                // "Game 1: "
+                delimited(tuple((tag("Game"), space0)), u32, tuple((tag(":"), space0))),
+                // "3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green"
+                separated_list0(tuple((tag(";"), space0)), Set::parse),
+            )),
+            |(id, sets)| Game { id, sets },
+        )(input)
     }
 
     pub fn is_possible(&self) -> bool {
-        // limit: 12 red cubes, 13 green cubes, and 14 blue cubes
+        // "limit: 12 red cubes, 13 green cubes, and 14 blue cubes"
 
         let set = self.max_set();
 
