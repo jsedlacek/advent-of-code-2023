@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use anyhow::{anyhow, Result};
+
 #[derive(Debug)]
 struct Game {
     galaxies: HashSet<(u64, u64)>,
@@ -23,9 +25,20 @@ impl Game {
         Self { galaxies }
     }
 
-    fn expand(&self, expansion_factor: u64) -> Self {
-        let max_x = self.galaxies.iter().map(|&(x, _)| x).max().unwrap_or(0);
-        let max_y = self.galaxies.iter().map(|&(x, _)| x).max().unwrap_or(0);
+    fn expand(&self, expansion_factor: u64) -> Result<Self> {
+        let max_x = self
+            .galaxies
+            .iter()
+            .map(|&(x, _)| x)
+            .max()
+            .ok_or(anyhow!("No values"))?;
+
+        let max_y = self
+            .galaxies
+            .iter()
+            .map(|&(x, _)| x)
+            .max()
+            .ok_or(anyhow!("No values"))?;
 
         let empty_cols: Vec<_> = (0..=max_x)
             .filter(|x| self.galaxies.iter().filter(|&(gx, _)| gx == x).count() == 0)
@@ -49,14 +62,14 @@ impl Game {
             })
             .collect();
 
-        Self { galaxies }
+        Ok(Self { galaxies })
     }
 
     fn puzzle(&self) -> u64 {
         self.galaxies
             .iter()
             .enumerate()
-            .map(|(a, &pos_a)| {
+            .flat_map(|(a, &pos_a)| {
                 self.galaxies
                     .iter()
                     .enumerate()
@@ -70,7 +83,6 @@ impl Game {
                         },
                     )
             })
-            .flatten()
             .map(|(a, b)| Self::distance(a, b))
             .sum::<u64>()
     }
@@ -80,19 +92,21 @@ impl Game {
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let game = Game::parse(include_str!("sample-input.txt"));
     dbg!(game.puzzle());
 
-    let game2 = game.expand(2);
+    let game2 = game.expand(2)?;
     dbg!(game2.puzzle());
 
-    let game10 = game.expand(10);
+    let game10 = game.expand(10)?;
     dbg!(game10.puzzle());
 
-    let game100 = game.expand(100);
+    let game100 = game.expand(100)?;
     dbg!(game100.puzzle());
 
-    let game_million = game.expand(1_000_000);
+    let game_million = game.expand(1_000_000)?;
     dbg!(game_million.puzzle());
+
+    Ok(())
 }

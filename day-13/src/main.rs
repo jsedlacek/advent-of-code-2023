@@ -129,7 +129,6 @@ impl Pattern {
     fn find_symmetry(&self) -> HashSet<u64> {
         self.find_vertical_symmetry()
             .union(&self.find_horizontal_symmetry())
-            .into_iter()
             .copied()
             .collect()
     }

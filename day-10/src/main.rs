@@ -26,27 +26,30 @@ struct Tile(HashSet<Direction>);
 impl Tile {
     fn parse(c: char) -> Option<Self> {
         match c {
-            '|' => Some(Self(HashSet::from_iter(
-                [Direction::North, Direction::South].into_iter(),
-            ))),
-            '-' => Some(Self(HashSet::from_iter(
-                [Direction::East, Direction::West].into_iter(),
-            ))),
-            'L' => Some(Self(HashSet::from_iter(
-                [Direction::North, Direction::East].into_iter(),
-            ))),
+            '|' => Some(Self(HashSet::from_iter([
+                Direction::North,
+                Direction::South,
+            ]))),
+            '-' => Some(Self(HashSet::from_iter([Direction::East, Direction::West]))),
+            'L' => Some(Self(HashSet::from_iter([
+                Direction::North,
+                Direction::East,
+            ]))),
 
-            'J' => Some(Self(HashSet::from_iter(
-                [Direction::North, Direction::West].into_iter(),
-            ))),
+            'J' => Some(Self(HashSet::from_iter([
+                Direction::North,
+                Direction::West,
+            ]))),
 
-            '7' => Some(Self(HashSet::from_iter(
-                [Direction::South, Direction::West].into_iter(),
-            ))),
+            '7' => Some(Self(HashSet::from_iter([
+                Direction::South,
+                Direction::West,
+            ]))),
 
-            'F' => Some(Self(HashSet::from_iter(
-                [Direction::South, Direction::East].into_iter(),
-            ))),
+            'F' => Some(Self(HashSet::from_iter([
+                Direction::South,
+                Direction::East,
+            ]))),
 
             _ => None,
         }
@@ -71,10 +74,8 @@ impl Game {
                 let y = y as i64;
                 if c == 'S' {
                     start_pos = Some(Point { x, y });
-                } else {
-                    if let Some(tile) = Tile::parse(c) {
-                        map.insert(Point { x, y }, tile);
-                    }
+                } else if let Some(tile) = Tile::parse(c) {
+                    map.insert(Point { x, y }, tile);
                 }
             }
         }
@@ -173,10 +174,8 @@ impl Game {
                             inside = !inside;
                         }
                     }
-                } else {
-                    if inside {
-                        count += 1;
-                    }
+                } else if inside {
+                    count += 1;
                 }
             }
         }

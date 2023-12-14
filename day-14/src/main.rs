@@ -81,18 +81,14 @@ impl Game {
                 for y in (0..=self.max_y).rev() {
                     if let Some(&rock) = self.map.get(&(x, y)) {
                         if rock == Rock::Cube {
-                            if y > 0 {
-                                free_y = y - 1;
-                            }
+                            free_y = y.saturating_sub(1);
                         } else {
                             if y != free_y {
                                 self.map.insert((x, free_y), rock);
                                 self.map.remove(&(x, y));
                             }
 
-                            if free_y > 0 {
-                                free_y -= 1;
-                            }
+                            free_y = free_y.saturating_sub(1);
                         }
                     }
                 }
@@ -126,17 +122,14 @@ impl Game {
                 for x in (0..=self.max_x).rev() {
                     if let Some(&rock) = self.map.get(&(x, y)) {
                         if rock == Rock::Cube {
-                            if x > 0 {
-                                free_x = x - 1;
-                            }
+                            free_x = x.saturating_sub(1);
                         } else {
                             if x != free_x {
                                 self.map.insert((free_x, y), rock);
                                 self.map.remove(&(x, y));
                             }
-                            if free_x > 0 {
-                                free_x -= 1;
-                            }
+
+                            free_x = free_x.saturating_sub(1);
                         }
                     }
                 }

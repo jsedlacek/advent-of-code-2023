@@ -83,7 +83,7 @@ impl Row {
     }
 
     fn valid_count(springs: &[Spring], damaged_groups: &[u128]) -> u128 {
-        if damaged_groups.len() > 0
+        if !damaged_groups.is_empty()
             && (springs.len() as u128)
                 < damaged_groups.iter().sum::<u128>() + (damaged_groups.len() as u128 - 1)
         {
@@ -99,7 +99,7 @@ impl Row {
             return 0;
         }
 
-        if damaged_groups.len() == 0
+        if damaged_groups.is_empty()
             && springs
                 .iter()
                 .all(|&s| s == Spring::Operational || s == Spring::Unknown)
