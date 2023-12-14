@@ -22,17 +22,15 @@ impl Game {
         map_res(
             separated_list1(newline, many1(Rock::parse)),
             |rows| -> Result<Self> {
-                let mut map = HashMap::new();
-
-                for (y, row) in rows.into_iter().enumerate() {
-                    let y = y as u64;
-                    for (x, rock) in row.into_iter().enumerate() {
-                        let x = x as u64;
-                        if let Some(rock) = rock {
-                            map.insert((x, y), rock);
-                        }
-                    }
-                }
+                let map = rows
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(y, row)| {
+                        row.into_iter().enumerate().filter_map(move |(x, rock)| {
+                            rock.map(|rock| ((x as u64, y as u64), rock))
+                        })
+                    })
+                    .collect::<HashMap<_, _>>();
 
                 let max_x = map
                     .keys()
