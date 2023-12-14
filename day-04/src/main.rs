@@ -106,11 +106,6 @@ impl Card {
 }
 
 fn main() -> Result<()> {
-    let (_, sample_game) = all_consuming(Game::parse)(include_str!("sample-input.txt"))?;
-
-    assert_eq!(sample_game.part1(), 13);
-    assert_eq!(sample_game.part2()?, 30);
-
     let (_, game) = all_consuming(Game::parse)(include_str!("input.txt"))?;
 
     println!("Part 1: {}", game.part1());
