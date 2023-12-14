@@ -12,8 +12,8 @@ impl Game {
     fn parse(input: &str) -> Result<Game> {
         let mut map = HashMap::new();
 
-        let mut width = 0;
-        let mut height = 0;
+        let mut max_x = 0;
+        let mut max_y = 0;
 
         for (y, line) in input.lines().enumerate() {
             for (x, cell) in line.chars().enumerate() {
@@ -22,18 +22,18 @@ impl Game {
                     map.insert((x, y), cell);
                 }
 
-                if x > width {
-                    width = x;
+                if x > max_x {
+                    max_x = x;
                 }
 
-                if y > height {
-                    height = y;
+                if y > max_y {
+                    max_y = y;
                 }
             }
         }
 
-        let x_range = 0..=width;
-        let y_range = 0..=height;
+        let x_range = 0..=max_x;
+        let y_range = 0..=max_y;
 
         Ok(Game {
             map,
@@ -58,12 +58,12 @@ impl Game {
 
         gears
             .iter()
-            .filter_map(|g| {
+            .filter_map(|(gx, gy)| {
                 let adjacent_numbers: Vec<_> = numbers
                     .iter()
                     .filter(|n| {
                         let (x, y) = n.surrounding_bounds();
-                        x.contains(&g.0) && y.contains(&g.1)
+                        x.contains(gx) && y.contains(gy)
                     })
                     .collect();
 
