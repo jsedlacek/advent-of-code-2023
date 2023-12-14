@@ -5,8 +5,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::newline,
-    combinator::{all_consuming, map, value},
-    error::{Error, ErrorKind},
+    combinator::{all_consuming, map, map_res, value},
     multi::{many0, many1, separated_list0, separated_list1},
     sequence::delimited,
     IResult,
@@ -53,24 +52,38 @@ struct Pattern {
 
 impl Pattern {
     fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, pattern) = separated_list1(newline, many1(Tile::parse))(input)?;
+        map_res(
+            separated_list1(newline, many1(Tile::parse)),
+            |pattern| -> Result<Self> {
+                let mut map = HashMap::new();
 
-        let mut map = HashMap::new();
+                for (y, line) in pattern.iter().enumerate() {
+                    let y = y as u64;
 
-        for (y, line) in pattern.iter().enumerate() {
-            let y = y as u64;
+                    for (x, &tile) in line.iter().enumerate() {
+                        let x = x as u64;
 
-            for (x, &tile) in line.iter().enumerate() {
-                let x = x as u64;
+                        map.insert((x, y), tile);
+                    }
+                }
 
-                map.insert((x, y), tile);
-            }
-        }
+                let max_x = map
+                    .keys()
+                    .copied()
+                    .map(|(x, _)| x)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
 
-        let max_x = map.keys().copied().map(|(x, _)| x).max().unwrap_or(0);
-        let max_y = map.keys().copied().map(|(_, y)| y).max().unwrap_or(0);
+                let max_y = map
+                    .keys()
+                    .copied()
+                    .map(|(_, y)| y)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
 
-        Ok((input, Self { map, max_x, max_y }))
+                Ok(Self { map, max_x, max_y })
+            },
+        )(input)
     }
 
     fn are_columns_eq(&self, a: u64, b: u64) -> bool {
@@ -170,9 +183,9 @@ impl Tile {
 fn main() -> Result<()> {
     let (_, game) = Game::parse(include_str!("input.txt"))?;
 
-    dbg!(game.part1());
+    println!("Part 1: {}", game.part1());
 
-    dbg!(game.part2()?);
+    println!("Part 2: {}", game.part2()?);
 
     Ok(())
 }

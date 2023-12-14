@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fmt::Display};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::newline,
-    combinator::{map, value},
+    combinator::{map_res, value},
     multi::{many1, separated_list1},
     IResult,
 };
@@ -19,24 +19,38 @@ struct Game {
 
 impl Game {
     fn parse(input: &str) -> IResult<&str, Self> {
-        map(separated_list1(newline, many1(Rock::parse)), |rows| {
-            let mut map = HashMap::new();
+        map_res(
+            separated_list1(newline, many1(Rock::parse)),
+            |rows| -> Result<Self> {
+                let mut map = HashMap::new();
 
-            for (y, row) in rows.into_iter().enumerate() {
-                let y = y as u64;
-                for (x, rock) in row.into_iter().enumerate() {
-                    let x = x as u64;
-                    if let Some(rock) = rock {
-                        map.insert((x, y), rock);
+                for (y, row) in rows.into_iter().enumerate() {
+                    let y = y as u64;
+                    for (x, rock) in row.into_iter().enumerate() {
+                        let x = x as u64;
+                        if let Some(rock) = rock {
+                            map.insert((x, y), rock);
+                        }
                     }
                 }
-            }
 
-            let max_x = map.keys().copied().map(|(x, _)| x).max().unwrap();
-            let max_y = map.keys().copied().map(|(_, y)| y).max().unwrap();
+                let max_x = map
+                    .keys()
+                    .copied()
+                    .map(|(x, _)| x)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
 
-            Self { map, max_x, max_y }
-        })(input)
+                let max_y = map
+                    .keys()
+                    .copied()
+                    .map(|(_, y)| y)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
+
+                Ok(Self { map, max_x, max_y })
+            },
+        )(input)
     }
 
     fn tilt(&mut self, direction: Direction) {
