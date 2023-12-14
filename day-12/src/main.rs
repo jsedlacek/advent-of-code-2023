@@ -133,6 +133,25 @@ impl Row {
                         break;
                     }
 
+                    // number of combinations
+                    // ??? 1,1 -> 3 positions, 0 value -> 1 option
+                    // #.#
+                    //
+                    // ???? 1,1 -> 3 positions, 1 value -> 3 options
+                    // .#.# 0
+                    // #..# 1
+                    // #.#. 2
+                    //
+                    // ????? 1,1 -> 3 positions, 2 values -> 6 options
+                    // ..#.# 00
+                    // .#..# 01
+                    // #...# 02
+                    // .#.#. 11
+                    // .#..# 12
+                    // ..#.# 22
+                    //
+                    // Combinations with Repetitions: https://math.libretexts.org/Courses/Monroe_Community_College/MTH_220_Discrete_Math/7%3A_Combinatorics/7.5%3A_Combinations_WITH_Repetitions
+
                     let c = combinations(
                         start_groups.len() as u128 + 1,
                         start.len() as u128 - min_group_length,
@@ -141,23 +160,6 @@ impl Row {
                     if c > 0 {
                         count += c * Self::valid_count(end, end_groups);
                     }
-
-                    // number of combinations
-                    // ??? 1,1
-                    // #.#
-                    //
-                    // ???? 1,1
-                    // .#.# 0
-                    // #..# 1
-                    // #.#. 2
-                    //
-                    // ????? 1,1
-                    // ..#.# 00
-                    // .#..# 01
-                    // #...# 02
-                    // .#.#. 11
-                    // .#..# 12
-                    // ..#.# 22
                 }
 
                 return count;
