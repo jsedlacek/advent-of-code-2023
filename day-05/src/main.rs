@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error};
+use std::collections::{HashMap, HashSet};
 
 use nom::{
     bytes::complete::tag,
@@ -9,7 +9,9 @@ use nom::{
     IResult,
 };
 
-#[derive(Debug, Clone, Copy)]
+use anyhow::{anyhow, Result};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Range {
     start: u64, // inclusive
     end: u64,   // exclusive
@@ -31,35 +33,34 @@ impl Range {
         }
     }
 
-    fn subtract(self, other: Range) -> Vec<Range> {
+    fn subtract(self, other: Range) -> HashSet<Range> {
         // No overlap
         if self.start >= other.end || self.end <= other.start {
-            return vec![self];
+            return [self].into();
         }
 
-        let mut result = Vec::new();
+        let mut result = HashSet::new();
 
         // Partial overlap at the start of "self"
         if other.start > self.start {
-            result.push(Range::new(self.start, other.start));
+            result.insert(Range::new(self.start, other.start));
         }
 
         // Partial overlap at the end of "self"
         if other.end < self.end {
-            result.push(Range::new(other.end, self.end));
+            result.insert(Range::new(other.end, self.end));
         }
 
         result
     }
 
-    fn subtract_ranges(self, ranges_to_subtract: &[Range]) -> Vec<Range> {
-        let mut current_ranges = vec![self];
+    fn subtract_ranges(self, ranges_to_subtract: &[Range]) -> HashSet<Range> {
+        let mut current_ranges: HashSet<_> = [self].into();
 
         for &range_to_subtract in ranges_to_subtract {
             current_ranges = current_ranges
                 .iter()
-                .map(|r| r.subtract(range_to_subtract).into_iter())
-                .flatten()
+                .flat_map(|r| r.subtract(range_to_subtract).into_iter())
                 .collect();
         }
 
@@ -67,6 +68,7 @@ impl Range {
     }
 }
 
+#[derive(Hash, PartialEq, Eq)]
 struct Mapping {
     source_range: Range,
     destination_range_start: u64,
@@ -88,20 +90,19 @@ impl Mapping {
     }
 
     fn map(&self, range: Range) -> Option<Range> {
-        match range.intersect(self.source_range) {
-            Some(intersect) => Some(Range::new(
+        range.intersect(self.source_range).map(|intersect| {
+            Range::new(
                 intersect.start - self.source_range.start + self.destination_range_start,
                 intersect.end - self.source_range.start + self.destination_range_start,
-            )),
-            None => None,
-        }
+            )
+        })
     }
 }
 
 struct Map {
     source_category: String,
     destination_category: String,
-    mappings: Vec<Mapping>,
+    mappings: HashSet<Mapping>,
 }
 
 impl Map {
@@ -118,7 +119,7 @@ impl Map {
             Self {
                 source_category: source_category.to_string(),
                 destination_category: destination_category.to_string(),
-                mappings,
+                mappings: HashSet::from_iter(mappings),
             },
         ))
     }
@@ -130,8 +131,8 @@ impl Map {
 
         let other_mappings: Vec<_> = other_ranges
             .iter()
-            .map(|r| Mapping {
-                source_range: r.clone(),
+            .map(|&r| Mapping {
+                source_range: r,
                 destination_range_start: r.start,
             })
             .collect();
@@ -139,8 +140,7 @@ impl Map {
         self.mappings
             .iter()
             .chain(other_mappings.iter())
-            .map(|m| m.map(range))
-            .flatten()
+            .flat_map(|m| m.map(range))
             .collect()
     }
 }
@@ -173,7 +173,7 @@ impl Game {
         Ok((input, Game { seeds, maps }))
     }
 
-    fn part1(&self) -> Result<u64, Box<dyn Error>> {
+    fn part1(&self) -> Result<u64> {
         let ranges: Vec<_> = self.seeds.iter().map(|&s| Range::new(s, s + 1)).collect();
 
         let min_value = self
@@ -181,12 +181,12 @@ impl Game {
             .into_iter()
             .map(|r| r.start)
             .min()
-            .ok_or("No minimal value")?;
+            .ok_or(anyhow!("No minimal value"))?;
 
         Ok(min_value)
     }
 
-    fn part2(&self) -> Result<u64, Box<dyn Error>> {
+    fn part2(&self) -> Result<u64> {
         let ranges: Vec<_> = self
             .seeds
             .chunks(2)
@@ -200,13 +200,13 @@ impl Game {
         self.find_minimal_value(&ranges)
     }
 
-    fn find_minimal_value(&self, ranges: &[Range]) -> Result<u64, Box<dyn Error>> {
+    fn find_minimal_value(&self, ranges: &[Range]) -> Result<u64> {
         let min_value = self
             .find_category_ranges("seed", ranges, "location")?
             .into_iter()
             .map(|r| r.start)
             .min()
-            .ok_or("No minimal value")?;
+            .ok_or(anyhow!("No minimal value"))?;
 
         Ok(min_value)
     }
@@ -216,7 +216,7 @@ impl Game {
         source_category: &str,
         source_ranges: &[Range],
         destination_category: &str,
-    ) -> Result<Vec<Range>, Box<dyn Error>> {
+    ) -> Result<Vec<Range>> {
         let mut category = source_category.to_string();
         let mut ranges = Vec::from(source_ranges);
 
@@ -228,20 +228,19 @@ impl Game {
             let map = self
                 .maps
                 .get(&category)
-                .ok_or(format!("Category not found: {category}"))?;
+                .ok_or(anyhow!("Category not found: {category}"))?;
 
             category = map.destination_category.clone();
 
             ranges = ranges
                 .iter()
-                .map(|&r| map.map(r).into_iter())
-                .flatten()
+                .flat_map(|&r| map.map(r).into_iter())
                 .collect();
         }
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let (_, game) = all_consuming(Game::parse)(include_str!("input.txt"))?;
     dbg!(game.part1()?);
     dbg!(game.part2()?);
@@ -250,13 +249,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_part1() {
+fn test_part1() -> Result<()> {
     let (_, sample_game) = all_consuming(Game::parse)(include_str!("sample-input.txt")).unwrap();
-    assert_eq!(sample_game.part1().unwrap(), 35);
+    assert_eq!(sample_game.part1()?, 35);
+
+    Ok(())
 }
 
 #[test]
-fn test_part2() {
+fn test_part2() -> Result<()> {
     let (_, sample_game) = all_consuming(Game::parse)(include_str!("sample-input.txt")).unwrap();
-    assert_eq!(sample_game.part2().unwrap(), 46);
+    assert_eq!(sample_game.part2()?, 46);
+
+    Ok(())
 }
