@@ -1,9 +1,9 @@
 use nom::{
     bytes::complete::tag,
     character::complete::{newline, space0, space1, u64},
-    combinator::{map_res, recognize},
+    combinator::{map, map_res, recognize},
     multi::separated_list0,
-    sequence::tuple,
+    sequence::{delimited, preceded, tuple},
     IResult,
 };
 
@@ -13,35 +13,45 @@ struct Game {
 
 impl Game {
     fn parse1(input: &str) -> IResult<&str, Self> {
-        // Time:      7  15   30
-        let (input, (_, _, time_list, _)) =
-            tuple((tag("Time:"), space0, Self::parse_list, newline))(input)?;
+        map(
+            tuple((
+                // Time:      7  15   30
+                delimited(tuple((tag("Time:"), space0)), Self::parse_list, newline),
+                // Distance:  9  40  200
+                preceded(tuple((tag("Distance:"), space0)), Self::parse_list),
+            )),
+            |(time_list, distance_list)| {
+                let races = time_list
+                    .iter()
+                    .zip(distance_list.iter())
+                    .map(|(&time, &distance)| Race::new(time, distance))
+                    .collect();
 
-        // Distance:  9  40  200
-        let (input, (_, _, distance_list)) =
-            tuple((tag("Distance:"), space0, Self::parse_list))(input)?;
-
-        let races = time_list
-            .iter()
-            .zip(distance_list.iter())
-            .map(|(&time, &distance)| Race::new(time, distance))
-            .collect();
-
-        Ok((input, Self { races }))
+                Self { races }
+            },
+        )(input)
     }
 
     fn parse2(input: &str) -> IResult<&str, Self> {
-        // Time:      7  15   30
-        let (input, (_, _, time, _)) =
-            tuple((tag("Time:"), space0, Self::parse_list_as_number, newline))(input)?;
-
-        // Distance:  9  40  200
-        let (input, (_, _, distance)) =
-            tuple((tag("Distance:"), space0, Self::parse_list_as_number))(input)?;
-
-        let race = Race::new(time, distance);
-
-        Ok((input, Self { races: vec![race] }))
+        map(
+            tuple((
+                // Time:      7  15   30
+                delimited(
+                    tuple((tag("Time:"), space0)),
+                    Self::parse_list_as_number,
+                    newline,
+                ),
+                // Distance:  9  40  200
+                preceded(
+                    tuple((tag("Distance:"), space0)),
+                    Self::parse_list_as_number,
+                ),
+            )),
+            |(time, distance)| {
+                let races = vec![Race::new(time, distance)];
+                Self { races }
+            },
+        )(input)
     }
 
     fn parse_list(input: &str) -> IResult<&str, Vec<u64>> {
