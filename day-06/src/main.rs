@@ -7,6 +7,8 @@ use nom::{
     IResult,
 };
 
+use anyhow::Result;
+
 struct Game {
     races: Vec<Race>,
 }
@@ -94,22 +96,28 @@ impl Race {
     }
 }
 
-fn main() {
-    let (_, game1) = Game::parse1(include_str!("input.txt")).unwrap();
-    dbg!(game1.puzzle());
+fn main() -> Result<()> {
+    let (_, game1) = Game::parse1(include_str!("input.txt"))?;
+    println!("Part 1: {}", game1.puzzle());
 
-    let (_, game2) = Game::parse2(include_str!("input.txt")).unwrap();
-    dbg!(game2.puzzle());
+    let (_, game2) = Game::parse2(include_str!("input.txt"))?;
+    println!("Part 1: {}", game2.puzzle());
+
+    Ok(())
 }
 
 #[test]
-fn part1() {
-    let (_, game) = Game::parse1(include_str!("sample-input.txt")).unwrap();
+fn part1() -> Result<()> {
+    let (_, game) = Game::parse1(include_str!("sample-input.txt"))?;
     assert_eq!(game.puzzle(), 288);
+
+    Ok(())
 }
 
 #[test]
-fn part2() {
-    let (_, game) = Game::parse2(include_str!("sample-input.txt")).unwrap();
+fn part2() -> Result<()> {
+    let (_, game) = Game::parse2(include_str!("sample-input.txt"))?;
     assert_eq!(game.puzzle(), 71503);
+
+    Ok(())
 }
