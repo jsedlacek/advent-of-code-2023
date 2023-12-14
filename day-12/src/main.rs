@@ -4,7 +4,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{newline, space1, u128},
-    combinator::map,
+    combinator::{map, value},
     multi::{many0, separated_list0},
     sequence::{delimited, tuple},
     IResult,
@@ -33,17 +33,7 @@ impl Game {
     }
 
     fn puzzle(&self) -> u128 {
-        self.rows
-            .iter()
-            .enumerate()
-            .map(|(i, row)| {
-                let count = row.option_count();
-
-                dbg!(i, count);
-
-                count
-            })
-            .sum()
+        self.rows.iter().map(|row| row.option_count()).sum()
     }
 }
 
@@ -231,9 +221,9 @@ impl Spring {
     fn parse(input: &str) -> IResult<&str, Self> {
         // ???.### 1,1,3
         alt((
-            map(tag("."), |_| Spring::Operational),
-            map(tag("#"), |_| Spring::Damaged),
-            map(tag("?"), |_| Spring::Unknown),
+            value(Spring::Operational, tag(".")),
+            value(Spring::Damaged, tag("#")),
+            value(Spring::Unknown, tag("?")),
         ))(input)
     }
 }
@@ -243,9 +233,13 @@ fn combinations(n: u128, r: u128) -> u128 {
 }
 
 fn main() -> Result<()> {
-    let (_, game) = Game::parse_2(include_str!("input.txt"))?;
+    let (_, game1) = Game::parse_1(include_str!("input.txt"))?;
 
-    dbg!(game.puzzle());
+    println!("Part 1: {}", game1.puzzle());
+
+    let (_, game2) = Game::parse_2(include_str!("input.txt"))?;
+
+    println!("Part 2: {}", game2.puzzle());
 
     Ok(())
 }
