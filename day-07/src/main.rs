@@ -174,13 +174,14 @@ fn main() -> Result<()> {
         all_consuming(Game::parse(ParserOptions::default()))(include_str!("input.txt"))
             .context("Error parsing input")?;
 
-    dbg!(game1.puzzle());
+    println!("Part 1: {}", game1.puzzle());
 
     let (_, game2) = all_consuming(Game::parse(ParserOptions {
         j_parse: JParse::Joker,
     }))(include_str!("input.txt"))
     .context("Error parsing input")?;
-    dbg!(game2.puzzle());
+
+    println!("Part 2: {}", game2.puzzle());
 
     Ok(())
 }
