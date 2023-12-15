@@ -11,17 +11,14 @@ use nom::{
     IResult,
 };
 
-struct Game1 {
-    steps: Vec<String>,
+struct Game1<'a> {
+    steps: Vec<&'a str>,
 }
 
-impl Game1 {
-    fn parse(input: &str) -> IResult<&str, Self> {
+impl<'a> Game1<'a> {
+    fn parse(input: &'a str) -> IResult<&str, Self> {
         map(
-            separated_list1(
-                tag(","),
-                map(recognize(many0(none_of(",\n"))), |s: &str| s.to_owned()),
-            ),
+            separated_list1(tag(","), recognize(many0(none_of(",\n")))),
             |steps| Self { steps },
         )(input)
     }
@@ -31,19 +28,19 @@ impl Game1 {
     }
 }
 
-struct Game2 {
-    operations: Vec<Operation>,
+struct Game2<'a> {
+    operations: Vec<Operation<'a>>,
 }
 
-impl Game2 {
-    fn parse(input: &str) -> IResult<&str, Self> {
+impl<'a> Game2<'a> {
+    fn parse(input: &'a str) -> IResult<&str, Self> {
         map(separated_list1(tag(","), Operation::parse), |operations| {
             Self { operations }
         })(input)
     }
 
     fn puzzle(&self) -> u64 {
-        let mut map: HashMap<u8, Vec<(String, u64)>> = HashMap::new();
+        let mut map: HashMap<u8, Vec<(&str, u64)>> = HashMap::new();
 
         for op in &self.operations {
             match op {
@@ -54,7 +51,7 @@ impl Game2 {
                     if let Some(e) = vec.iter_mut().find(|(n, _)| n == name) {
                         e.1 = *focus;
                     } else {
-                        vec.push((name.to_owned(), *focus));
+                        vec.push((name, *focus));
                     }
 
                     map.insert(h, vec);
@@ -89,20 +86,20 @@ impl Game2 {
 }
 
 #[derive(Debug, Clone)]
-enum Operation {
-    Add(String, u64),
-    Remove(String),
+enum Operation<'a> {
+    Add(&'a str, u64),
+    Remove(&'a str),
 }
 
-impl Operation {
-    fn parse(input: &str) -> IResult<&str, Self> {
+impl<'a> Operation<'a> {
+    fn parse(input: &'a str) -> IResult<&str, Self> {
         alt((
             map(
                 tuple((alpha1::<&str, _>, tag("="), u64)),
-                |(s, _, focus)| Self::Add(s.to_owned(), focus),
+                |(s, _, focus)| Self::Add(s, focus),
             ),
             map(tuple((alpha1::<&str, _>, tag("-"))), |(s, _)| {
-                Self::Remove(s.to_owned())
+                Self::Remove(s)
             }),
         ))(input)
     }
