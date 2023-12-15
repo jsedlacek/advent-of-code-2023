@@ -9,6 +9,8 @@ use nom::{
     IResult,
 };
 
+use anyhow::Result;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 enum GameVersion {
     V1,
@@ -21,15 +23,15 @@ struct Game {
 
 impl Game {
     fn parse_1(input: &str) -> IResult<&str, Self> {
-        let (input, rounds) = separated_list0(newline, Round::parse_1)(input)?;
-
-        Ok((input, Self { rounds }))
+        map(separated_list0(newline, Round::parse_1), |rounds| Self {
+            rounds,
+        })(input)
     }
 
     fn parse_2(input: &str) -> IResult<&str, Self> {
-        let (input, rounds) = separated_list0(newline, Round::parse_2)(input)?;
-
-        Ok((input, Self { rounds }))
+        map(separated_list0(newline, Round::parse_2), |rounds| Self {
+            rounds,
+        })(input)
     }
 
     fn puzzle(&self) -> u64 {
@@ -105,13 +107,11 @@ impl Hand {
                 .or_insert(1);
         }
 
-        if self.version == GameVersion::V2 {
-            if card_map.get(&'J').is_some() && card_map.len() > 1 {
-                let &joker_count = card_map.get(&'J').unwrap();
-                card_map.remove(&'J');
-                let (&card, &count) = card_map.iter().max_by_key(|(_, &count)| count).unwrap();
-                card_map.insert(card, count + joker_count);
-            }
+        if self.version == GameVersion::V2 && card_map.get(&'J').is_some() && card_map.len() > 1 {
+            let &joker_count = card_map.get(&'J').unwrap();
+            card_map.remove(&'J');
+            let (&card, &count) = card_map.iter().max_by_key(|(_, &count)| count).unwrap();
+            card_map.insert(card, count + joker_count);
         }
 
         let mut count_map = HashMap::new();
@@ -196,13 +196,13 @@ const CARD_VALUES_2: &str = "J23456789TQKA";
 
 impl Card {
     fn parse_1(input: &str) -> IResult<&str, Self> {
-        // T
+        // "T""
 
         map(one_of(CARD_VALUES_1), |c| Self(c, GameVersion::V1))(input)
     }
 
     fn parse_2(input: &str) -> IResult<&str, Self> {
-        // T
+        // "T""
 
         map(one_of(CARD_VALUES_2), |c| Self(c, GameVersion::V1))(input)
     }
@@ -217,7 +217,7 @@ impl Card {
 
 impl Ord for Card {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.value().unwrap().cmp(&other.value().unwrap())
+        self.value().cmp(&other.value())
     }
 }
 
@@ -227,25 +227,31 @@ impl PartialOrd for Card {
     }
 }
 
-fn main() {
-    let (_, game1) = Game::parse_1(include_str!("input.txt")).unwrap();
+fn main() -> Result<()> {
+    let (_, game1) = Game::parse_1(include_str!("input.txt"))?;
 
     dbg!(game1.puzzle());
 
-    let (_, game2) = Game::parse_2(include_str!("input.txt")).unwrap();
+    let (_, game2) = Game::parse_2(include_str!("input.txt"))?;
     dbg!(game2.puzzle());
+
+    Ok(())
 }
 
 #[test]
-fn part1() {
-    let (_, game) = Game::parse_1(include_str!("sample-input.txt")).unwrap();
+fn part1() -> Result<()> {
+    let (_, game) = Game::parse_1(include_str!("sample-input.txt"))?;
 
     assert_eq!(game.puzzle(), 6440);
+
+    Ok(())
 }
 
 #[test]
-fn part2() {
-    let (_, game) = Game::parse_2(include_str!("sample-input.txt")).unwrap();
+fn part2() -> Result<()> {
+    let (_, game) = Game::parse_2(include_str!("sample-input.txt"))?;
 
     assert_eq!(game.puzzle(), 5905);
+
+    Ok(())
 }
