@@ -27,7 +27,7 @@ impl Game1 {
     }
 
     fn puzzle(&self) -> u64 {
-        self.steps.iter().map(|s| hash(s)).sum::<u64>()
+        self.steps.iter().map(|s| hash(s) as u64).sum::<u64>()
     }
 }
 
@@ -43,7 +43,7 @@ impl Game2 {
     }
 
     fn puzzle(&self) -> u64 {
-        let mut map: HashMap<u64, Vec<(String, u64)>> = HashMap::new();
+        let mut map: HashMap<u8, Vec<(String, u64)>> = HashMap::new();
 
         for op in &self.operations {
             match op {
@@ -77,7 +77,7 @@ impl Game2 {
 
         map.iter()
             .map(|(h, vec)| {
-                (h + 1)
+                (*h as u64 + 1)
                     * vec
                         .iter()
                         .enumerate()
@@ -108,10 +108,10 @@ impl Operation {
     }
 }
 
-fn hash(input: &str) -> u64 {
+fn hash(input: &str) -> u8 {
     input
         .bytes()
-        .fold(0u64, |acc, b| ((acc + b as u64) * 17) % 256)
+        .fold(0u8, |acc, b| ((acc.wrapping_add(b)).wrapping_mul(17)))
 }
 
 fn main() -> Result<()> {
