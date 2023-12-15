@@ -15,23 +15,33 @@ use nom::{
 
 use anyhow::{Context, Result};
 
-trait CardParser {
-    fn parse(input: &str) -> IResult<&str, Card>;
-}
-
 struct Game {
     rounds: Vec<Round>,
 }
 
+#[derive(Clone, Copy, Default)]
+enum JParse {
+    #[default]
+    Jack,
+    Joker,
+}
+
+#[derive(Clone, Copy, Default)]
+struct ParserOptions {
+    j_parse: JParse,
+}
+
 impl Game {
-    fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
-        delimited(
-            many0(newline),
-            map(separated_list0(newline, Round::parse::<T>), |rounds| Self {
-                rounds,
-            }),
-            many0(newline),
-        )(input)
+    fn parse(options: ParserOptions) -> impl Fn(&str) -> IResult<&str, Self> {
+        move |input: &str| {
+            delimited(
+                many0(newline),
+                map(separated_list0(newline, Round::parse(options)), |rounds| {
+                    Self { rounds }
+                }),
+                many0(newline),
+            )(input)
+        }
     }
 
     fn puzzle(&self) -> u64 {
@@ -57,11 +67,14 @@ struct Round {
 }
 
 impl Round {
-    fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
+    fn parse(options: ParserOptions) -> impl Fn(&str) -> IResult<&str, Self> {
         // Example: "32T3K 765"
-        map(tuple((Hand::parse::<T>, space1, u64)), |(hand, _, bid)| {
-            Self { hand, bid }
-        })(input)
+        move |input: &str| {
+            map(
+                tuple((Hand::parse(options), space1, u64)),
+                |(hand, _, bid)| Self { hand, bid },
+            )(input)
+        }
     }
 }
 
@@ -71,9 +84,9 @@ struct Hand {
 }
 
 impl Hand {
-    fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
+    fn parse(options: ParserOptions) -> impl Fn(&str) -> IResult<&str, Self> {
         // Example: "32T3K"
-        map(many_m_n(5, 5, T::parse), |cards| Self { cards })(input)
+        move |input: &str| map(many_m_n(5, 5, Card::parse(options)), |cards| Self { cards })(input)
     }
 }
 
@@ -128,44 +141,45 @@ enum Card {
     Ace,
 }
 
-struct CardParserV1;
-
-impl CardParser for CardParserV1 {
-    fn parse(input: &str) -> IResult<&str, Card> {
-        alt((
-            value(Card::Two, tag("2")),
-            value(Card::Three, tag("3")),
-            value(Card::Four, tag("4")),
-            value(Card::Five, tag("5")),
-            value(Card::Six, tag("6")),
-            value(Card::Seven, tag("7")),
-            value(Card::Eight, tag("8")),
-            value(Card::Nine, tag("9")),
-            value(Card::Ten, tag("T")),
-            value(Card::Jack, tag("J")),
-            value(Card::Queen, tag("Q")),
-            value(Card::King, tag("K")),
-            value(Card::Ace, tag("A")),
-        ))(input)
-    }
-}
-
-struct CardParserV2;
-
-impl CardParser for CardParserV2 {
-    fn parse(input: &str) -> IResult<&str, Card> {
-        alt((value(Card::Joker, tag("J")), CardParserV1::parse))(input)
+impl Card {
+    fn parse(options: ParserOptions) -> impl Fn(&str) -> IResult<&str, Self> {
+        move |input: &str| {
+            alt((
+                value(Card::Two, tag("2")),
+                value(Card::Three, tag("3")),
+                value(Card::Four, tag("4")),
+                value(Card::Five, tag("5")),
+                value(Card::Six, tag("6")),
+                value(Card::Seven, tag("7")),
+                value(Card::Eight, tag("8")),
+                value(Card::Nine, tag("9")),
+                value(Card::Ten, tag("T")),
+                value(
+                    match options.j_parse {
+                        JParse::Jack => Card::Jack,
+                        JParse::Joker => Card::Joker,
+                    },
+                    tag("J"),
+                ),
+                value(Card::Queen, tag("Q")),
+                value(Card::King, tag("K")),
+                value(Card::Ace, tag("A")),
+            ))(input)
+        }
     }
 }
 
 fn main() -> Result<()> {
-    let (_, game1) = all_consuming(Game::parse::<CardParserV1>)(include_str!("input.txt"))
-        .context("Error parsing input")?;
+    let (_, game1) =
+        all_consuming(Game::parse(ParserOptions::default()))(include_str!("input.txt"))
+            .context("Error parsing input")?;
 
     dbg!(game1.puzzle());
 
-    let (_, game2) = all_consuming(Game::parse::<CardParserV2>)(include_str!("input.txt"))
-        .context("Error parsing input")?;
+    let (_, game2) = all_consuming(Game::parse(ParserOptions {
+        j_parse: JParse::Joker,
+    }))(include_str!("input.txt"))
+    .context("Error parsing input")?;
     dbg!(game2.puzzle());
 
     Ok(())
@@ -173,7 +187,7 @@ fn main() -> Result<()> {
 
 #[test]
 fn part1() -> Result<()> {
-    let (_, game) = Game::parse::<CardParserV1>(include_str!("sample-input.txt"))?;
+    let (_, game) = Game::parse(ParserOptions::default())(include_str!("sample-input.txt"))?;
 
     assert_eq!(game.puzzle(), 6440);
 
@@ -182,7 +196,9 @@ fn part1() -> Result<()> {
 
 #[test]
 fn part2() -> Result<()> {
-    let (_, game) = Game::parse::<CardParserV2>(include_str!("sample-input.txt"))?;
+    let (_, game) = Game::parse(ParserOptions {
+        j_parse: JParse::Joker,
+    })(include_str!("sample-input.txt"))?;
 
     assert_eq!(game.puzzle(), 5905);
 
@@ -191,7 +207,7 @@ fn part2() -> Result<()> {
 
 #[test]
 fn parse_v1() -> Result<()> {
-    let (_, card) = CardParserV1::parse("J")?;
+    let (_, card) = Card::parse(ParserOptions::default())("J")?;
 
     assert_eq!(card, Card::Jack);
 
@@ -200,7 +216,9 @@ fn parse_v1() -> Result<()> {
 
 #[test]
 fn parse_v2() -> Result<()> {
-    let (_, card) = CardParserV2::parse("J")?;
+    let (_, card) = Card::parse(ParserOptions {
+        j_parse: JParse::Joker,
+    })("J")?;
 
     assert_eq!(card, Card::Joker);
 
