@@ -61,14 +61,16 @@ impl Game2 {
                 }
                 Operation::Remove(name) => {
                     let h = hash(name);
-                    let vec = map.remove(&h).unwrap_or_default();
+                    let vec = map.remove(&h);
 
-                    let vec = vec
-                        .into_iter()
-                        .filter(|(n, _)| n != name)
-                        .collect::<Vec<_>>();
+                    if let Some(vec) = vec {
+                        let vec = vec
+                            .into_iter()
+                            .filter(|(n, _)| n != name)
+                            .collect::<Vec<_>>();
 
-                    map.insert(h, vec);
+                        map.insert(h, vec);
+                    }
                 }
             }
         }
@@ -128,7 +130,7 @@ fn test_hash() {
 }
 
 #[test]
-fn part1() -> Result<()> {
+fn test_part1() -> Result<()> {
     let (_, game) = Game1::parse(include_str!("sample-input.txt"))?;
     assert_eq!(game.puzzle(), 1320);
 
@@ -136,7 +138,7 @@ fn part1() -> Result<()> {
 }
 
 #[test]
-fn part2() -> Result<()> {
+fn test_part2() -> Result<()> {
     let (_, game) = Game2::parse(include_str!("sample-input.txt"))?;
     assert_eq!(game.puzzle(), 145);
 
