@@ -45,29 +45,16 @@ impl<'a> Game2<'a> {
         for op in &self.operations {
             match op {
                 Operation::Add(name, focus) => {
-                    let h = hash(name);
-                    let mut vec = map.remove(&h).unwrap_or_default();
+                    let vec = map.entry(hash(name)).or_default();
 
-                    if let Some(e) = vec.iter_mut().find(|(n, _)| n == name) {
-                        e.1 = *focus;
-                    } else {
-                        vec.push((name, *focus));
+                    match vec.iter_mut().find(|(n, _)| n == name) {
+                        Some((_, f)) => *f = *focus,
+                        None => vec.push((name, *focus)),
                     }
-
-                    map.insert(h, vec);
                 }
                 Operation::Remove(name) => {
-                    let h = hash(name);
-                    let vec = map.remove(&h);
-
-                    if let Some(vec) = vec {
-                        let vec = vec
-                            .into_iter()
-                            .filter(|(n, _)| n != name)
-                            .collect::<Vec<_>>();
-
-                        map.insert(h, vec);
-                    }
+                    map.entry(hash(name))
+                        .and_modify(|vec| vec.retain(|(n, _)| n != name));
                 }
             }
         }
@@ -94,13 +81,10 @@ enum Operation<'a> {
 impl<'a> Operation<'a> {
     fn parse(input: &'a str) -> IResult<&str, Self> {
         alt((
-            map(
-                tuple((alpha1::<&str, _>, tag("="), u64)),
-                |(s, _, focus)| Self::Add(s, focus),
-            ),
-            map(tuple((alpha1::<&str, _>, tag("-"))), |(s, _)| {
-                Self::Remove(s)
+            map(tuple((alpha1, tag("="), u64)), |(s, _, focus)| {
+                Self::Add(s, focus)
             }),
+            map(tuple((alpha1, tag("-"))), |(s, _)| Self::Remove(s)),
         ))(input)
     }
 }
