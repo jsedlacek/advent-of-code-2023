@@ -7,13 +7,13 @@ use nom::{
         complete::newline,
         complete::{space1, u64},
     },
-    combinator::{map, value},
-    multi::{many_m_n, separated_list0},
-    sequence::tuple,
+    combinator::{all_consuming, map, value},
+    multi::{many0, many_m_n, separated_list0},
+    sequence::{delimited, tuple},
     IResult,
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 trait CardParser {
     fn parse(input: &str) -> IResult<&str, Card>;
@@ -25,15 +25,19 @@ struct Game {
 
 impl Game {
     fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
-        map(separated_list0(newline, Round::parse::<T>), |rounds| Self {
-            rounds,
-        })(input)
+        delimited(
+            many0(newline),
+            map(separated_list0(newline, Round::parse::<T>), |rounds| Self {
+                rounds,
+            }),
+            many0(newline),
+        )(input)
     }
 
     fn puzzle(&self) -> u64 {
-        let mut rounds = self.rounds.clone();
+        let mut rounds: Vec<_> = self.rounds.iter().collect();
 
-        rounds.sort_by_key(|r| r.hand.clone());
+        rounds.sort_by_key(|a| &a.hand);
 
         rounds
             .iter()
@@ -54,7 +58,7 @@ struct Round {
 
 impl Round {
     fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
-        // 32T3K 765
+        // Example: "32T3K 765"
         map(tuple((Hand::parse::<T>, space1, u64)), |(hand, _, bid)| {
             Self { hand, bid }
         })(input)
@@ -68,7 +72,7 @@ struct Hand {
 
 impl Hand {
     fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
-        // 32T3K
+        // Example: "32T3K"
         map(many_m_n(5, 5, T::parse), |cards| Self { cards })(input)
     }
 }
@@ -84,11 +88,10 @@ impl Hand {
                 .or_insert(1);
         }
 
-        if card_map.get(&Card::Joker).is_some() && card_map.len() > 1 {
-            let &joker_count = card_map.get(&Card::Joker).unwrap();
-            card_map.remove(&Card::Joker);
-            let (&card, &count) = card_map.iter().max_by_key(|(_, &count)| count).unwrap();
-            card_map.insert(card, count + joker_count);
+        if let Some(joker_count) = card_map.remove(&Card::Joker) {
+            if let Some((&card, &count)) = card_map.iter().max_by_key(|(_, &count)| count) {
+                card_map.insert(card, count + joker_count);
+            }
         }
 
         let mut count_map = HashMap::new();
@@ -120,11 +123,7 @@ impl Hand {
 
 impl Ord for Hand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match self.get_type().cmp(&other.get_type()) {
-            std::cmp::Ordering::Less => std::cmp::Ordering::Less,
-            std::cmp::Ordering::Greater => std::cmp::Ordering::Greater,
-            std::cmp::Ordering::Equal => self.cards.cmp(&other.cards),
-        }
+        (self.get_type(), &self.cards).cmp(&(other.get_type(), &other.cards))
     }
 }
 
@@ -168,8 +167,6 @@ struct CardParserV1;
 impl CardParser for CardParserV1 {
     fn parse(input: &str) -> IResult<&str, Card> {
         alt((
-            // value(CardValue::Joker, tag("J")),
-            // J is Card::Jack in v1
             value(Card::Two, tag("2")),
             value(Card::Three, tag("3")),
             value(Card::Four, tag("4")),
@@ -191,32 +188,18 @@ struct CardParserV2;
 
 impl CardParser for CardParserV2 {
     fn parse(input: &str) -> IResult<&str, Card> {
-        alt((
-            value(Card::Joker, tag("J")),
-            value(Card::Two, tag("2")),
-            value(Card::Three, tag("3")),
-            value(Card::Four, tag("4")),
-            value(Card::Five, tag("5")),
-            value(Card::Six, tag("6")),
-            value(Card::Seven, tag("7")),
-            value(Card::Eight, tag("8")),
-            value(Card::Nine, tag("9")),
-            value(Card::Ten, tag("T")),
-            // value(CardValue::Jack, tag("J"))
-            // J is Card::Joker in v2
-            value(Card::Queen, tag("Q")),
-            value(Card::King, tag("K")),
-            value(Card::Ace, tag("A")),
-        ))(input)
+        alt((value(Card::Joker, tag("J")), CardParserV1::parse))(input)
     }
 }
 
 fn main() -> Result<()> {
-    let (_, game1) = Game::parse::<CardParserV1>(include_str!("input.txt"))?;
+    let (_, game1) = all_consuming(Game::parse::<CardParserV1>)(include_str!("input.txt"))
+        .context("Error parsing input")?;
 
     dbg!(game1.puzzle());
 
-    let (_, game2) = Game::parse::<CardParserV2>(include_str!("input.txt"))?;
+    let (_, game2) = all_consuming(Game::parse::<CardParserV2>)(include_str!("input.txt"))
+        .context("Error parsing input")?;
     dbg!(game2.puzzle());
 
     Ok(())
