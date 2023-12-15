@@ -15,8 +15,8 @@ use nom::{
 
 use anyhow::Result;
 
-trait Parser<T> {
-    fn parse(input: &str) -> IResult<&str, T>;
+trait CardParser {
+    fn parse(input: &str) -> IResult<&str, Card>;
 }
 
 struct Game {
@@ -24,7 +24,7 @@ struct Game {
 }
 
 impl Game {
-    fn parse<T: Parser<Card>>(input: &str) -> IResult<&str, Self> {
+    fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
         map(separated_list0(newline, Round::parse::<T>), |rounds| Self {
             rounds,
         })(input)
@@ -53,7 +53,7 @@ struct Round {
 }
 
 impl Round {
-    fn parse<T: Parser<Card>>(input: &str) -> IResult<&str, Self> {
+    fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
         // 32T3K 765
         map(tuple((Hand::parse::<T>, space1, u64)), |(hand, _, bid)| {
             Self { hand, bid }
@@ -67,7 +67,7 @@ struct Hand {
 }
 
 impl Hand {
-    fn parse<T: Parser<Card>>(input: &str) -> IResult<&str, Self> {
+    fn parse<T: CardParser>(input: &str) -> IResult<&str, Self> {
         // 32T3K
         map(many_m_n(5, 5, T::parse), |cards| Self { cards })(input)
     }
@@ -165,7 +165,7 @@ enum Card {
 
 struct CardParserV1;
 
-impl Parser<Card> for CardParserV1 {
+impl CardParser for CardParserV1 {
     fn parse(input: &str) -> IResult<&str, Card> {
         alt((
             // value(CardValue::Joker, tag("J")),
@@ -189,7 +189,7 @@ impl Parser<Card> for CardParserV1 {
 
 struct CardParserV2;
 
-impl Parser<Card> for CardParserV2 {
+impl CardParser for CardParserV2 {
     fn parse(input: &str) -> IResult<&str, Card> {
         alt((
             value(Card::Joker, tag("J")),
