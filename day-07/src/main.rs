@@ -78,14 +78,11 @@ impl Hand {
 }
 
 impl Hand {
-    fn get_type(&self) -> HandType {
-        let mut card_map: HashMap<Card, u32> = HashMap::new();
+    fn get_set_counts(&self) -> Vec<u64> {
+        let mut card_map: HashMap<Card, u64> = HashMap::new();
 
         for &c in &self.cards {
-            card_map
-                .entry(c)
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
+            *card_map.entry(c).or_insert(0) += 1;
         }
 
         if let Some(joker_count) = card_map.remove(&Card::Joker) {
@@ -94,36 +91,16 @@ impl Hand {
             }
         }
 
-        let mut count_map = HashMap::new();
-
-        for &c in card_map.values() {
-            count_map
-                .entry(c)
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
-        }
-
-        if count_map.get(&5) == Some(&1) {
-            HandType::FiveOfAKind
-        } else if count_map.get(&4) == Some(&1) {
-            HandType::FourOfAKind
-        } else if count_map.get(&3) == Some(&1) && count_map.get(&2) == Some(&1) {
-            HandType::FullHouse
-        } else if count_map.get(&3) == Some(&1) {
-            HandType::ThreeOfAKind
-        } else if count_map.get(&2) == Some(&2) {
-            HandType::TwoPair
-        } else if count_map.get(&2) == Some(&1) {
-            HandType::OnePair
-        } else {
-            HandType::HighCard
-        }
+        (1..=5)
+            .rev()
+            .map(|count| card_map.values().filter(|&&c| c == count).count() as u64)
+            .collect()
     }
 }
 
 impl Ord for Hand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.get_type(), &self.cards).cmp(&(other.get_type(), &other.cards))
+        (self.get_set_counts(), &self.cards).cmp(&(other.get_set_counts(), &other.cards))
     }
 }
 
@@ -131,17 +108,6 @@ impl PartialOrd for Hand {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-enum HandType {
-    HighCard,
-    OnePair,
-    TwoPair,
-    ThreeOfAKind,
-    FullHouse,
-    FourOfAKind,
-    FiveOfAKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
