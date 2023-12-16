@@ -62,32 +62,38 @@ impl Game {
         self.calculate_energy(Position(0, 0), Direction::Right)
     }
 
-    fn part2(&self) -> usize {
-        self.bounds
+    fn part2(&self) -> Result<usize> {
+        let from_top = self
+            .bounds
             .0
             .clone()
-            .map(|x| (Position(x, *self.bounds.1.start()), Direction::Down))
-            .chain(
-                self.bounds
-                    .0
-                    .clone()
-                    .map(|x| (Position(x, *self.bounds.1.end()), Direction::Up)),
-            )
-            .chain(
-                self.bounds
-                    .1
-                    .clone()
-                    .map(|y| (Position(*self.bounds.0.start(), y), Direction::Right)),
-            )
-            .chain(
-                self.bounds
-                    .1
-                    .clone()
-                    .map(|y| (Position(*self.bounds.0.end(), y), Direction::Left)),
-            )
+            .map(|x| (Position(x, *self.bounds.1.start()), Direction::Down));
+
+        let from_bottom = self
+            .bounds
+            .0
+            .clone()
+            .map(|x| (Position(x, *self.bounds.1.end()), Direction::Up));
+
+        let from_left = self
+            .bounds
+            .1
+            .clone()
+            .map(|y| (Position(*self.bounds.0.start(), y), Direction::Right));
+
+        let from_right = self
+            .bounds
+            .1
+            .clone()
+            .map(|y| (Position(*self.bounds.0.end(), y), Direction::Left));
+
+        from_top
+            .chain(from_bottom)
+            .chain(from_left)
+            .chain(from_right)
             .map(|(pos, dir)| self.calculate_energy(pos, dir))
             .max()
-            .unwrap()
+            .ok_or(anyhow!("No bounds"))
     }
 
     fn calculate_energy(&self, start_pos: Position, start_dir: Direction) -> usize {
@@ -180,28 +186,28 @@ struct Beam;
 impl Beam {
     fn encounter(dir: Direction, tile: Tile) -> HashSet<Direction> {
         match (dir, tile) {
-            (Direction::Right, Tile::MirrorUL) => vec![Direction::Down],
-            (Direction::Right, Tile::MirrorUR) => vec![Direction::Up],
-            (Direction::Right, Tile::SplitterU) => vec![Direction::Up, Direction::Down],
-            (Direction::Right, Tile::SplitterL) => vec![Direction::Right],
+            (Direction::Right, Tile::MirrorUL) => HashSet::from([Direction::Down]),
+            (Direction::Right, Tile::MirrorUR) => HashSet::from([Direction::Up]),
+            (Direction::Right, Tile::SplitterU) => HashSet::from([Direction::Up, Direction::Down]),
+            (Direction::Right, Tile::SplitterL) => HashSet::from([Direction::Right]),
 
-            (Direction::Left, Tile::MirrorUL) => vec![Direction::Up],
-            (Direction::Left, Tile::MirrorUR) => vec![Direction::Down],
-            (Direction::Left, Tile::SplitterU) => vec![Direction::Up, Direction::Down],
-            (Direction::Left, Tile::SplitterL) => vec![Direction::Left],
+            (Direction::Left, Tile::MirrorUL) => HashSet::from([Direction::Up]),
+            (Direction::Left, Tile::MirrorUR) => HashSet::from([Direction::Down]),
+            (Direction::Left, Tile::SplitterU) => HashSet::from([Direction::Up, Direction::Down]),
+            (Direction::Left, Tile::SplitterL) => HashSet::from([Direction::Left]),
 
-            (Direction::Up, Tile::MirrorUL) => vec![Direction::Left],
-            (Direction::Up, Tile::MirrorUR) => vec![Direction::Right],
-            (Direction::Up, Tile::SplitterU) => vec![Direction::Up],
-            (Direction::Up, Tile::SplitterL) => vec![Direction::Left, Direction::Right],
+            (Direction::Up, Tile::MirrorUL) => HashSet::from([Direction::Left]),
+            (Direction::Up, Tile::MirrorUR) => HashSet::from([Direction::Right]),
+            (Direction::Up, Tile::SplitterU) => HashSet::from([Direction::Up]),
+            (Direction::Up, Tile::SplitterL) => HashSet::from([Direction::Left, Direction::Right]),
 
-            (Direction::Down, Tile::MirrorUL) => vec![Direction::Right],
-            (Direction::Down, Tile::MirrorUR) => vec![Direction::Left],
-            (Direction::Down, Tile::SplitterU) => vec![Direction::Down],
-            (Direction::Down, Tile::SplitterL) => vec![Direction::Left, Direction::Right],
+            (Direction::Down, Tile::MirrorUL) => HashSet::from([Direction::Right]),
+            (Direction::Down, Tile::MirrorUR) => HashSet::from([Direction::Left]),
+            (Direction::Down, Tile::SplitterU) => HashSet::from([Direction::Down]),
+            (Direction::Down, Tile::SplitterL) => {
+                HashSet::from([Direction::Left, Direction::Right])
+            }
         }
-        .into_iter()
-        .collect()
     }
 }
 
@@ -209,7 +215,7 @@ fn main() -> Result<()> {
     let (_, game) = Game::parse(include_str!("input.txt"))?;
 
     println!("Part 1: {}", game.part1());
-    println!("Part 2: {}", game.part2());
+    println!("Part 2: {}", game.part2()?);
 
     Ok(())
 }
@@ -227,7 +233,7 @@ fn part1() -> Result<()> {
 fn part2() -> Result<()> {
     let (_, game) = Game::parse(include_str!("sample-input.txt"))?;
 
-    assert_eq!(game.part2(), 51);
+    assert_eq!(game.part2()?, 51);
 
     Ok(())
 }
