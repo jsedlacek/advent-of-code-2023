@@ -5,14 +5,21 @@ use nom::{
     bytes::complete::tag,
     character::complete::newline,
     combinator::{all_consuming, map, value},
+    error::VerboseError,
     multi::{many0, many1, separated_list1},
     sequence::delimited,
     IResult,
 };
 
+type NomError<T> = nom::Err<nom::error::Error<T>>;
+type NomVerboseError<T> = nom::Err<nom::error::VerboseError<T>>;
+type NomResult<I, T> = IResult<I, T, VerboseError<I>>;
+// type NomResult<I, T> = IResult<I, T>; // uncomment to switch to simple errors
+
 #[derive(Debug)]
 enum GameError {
-    Parse(nom::Err<nom::error::Error<String>>),
+    Parse(NomError<String>),
+    ParseVerbose(NomVerboseError<String>),
     NoBounds,
 }
 
@@ -22,8 +29,8 @@ impl std::error::Error for GameError {}
 
 impl std::fmt::Display for GameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let description = match self {
-            Self::Parse(_) => "cannot parse game input",
+        let description = match &self {
+            Self::Parse(_) | Self::ParseVerbose(_) => "cannot parse game input",
             Self::NoBounds => "game has no bounds",
         };
 
@@ -31,9 +38,22 @@ impl std::fmt::Display for GameError {
     }
 }
 
-impl From<nom::Err<nom::error::Error<&str>>> for GameError {
-    fn from(err: nom::Err<nom::error::Error<&str>>) -> Self {
+impl From<NomError<&str>> for GameError {
+    fn from(err: NomError<&str>) -> Self {
         Self::Parse(err.to_owned())
+    }
+}
+
+impl From<NomVerboseError<&str>> for GameError {
+    fn from(err: NomVerboseError<&str>) -> Self {
+        let owned_err = err.map(|verbose_error| nom::error::VerboseError {
+            errors: verbose_error
+                .errors
+                .into_iter()
+                .map(|(input, kind)| (input.to_string(), kind))
+                .collect(),
+        });
+        Self::ParseVerbose(owned_err)
     }
 }
 
@@ -46,7 +66,7 @@ struct Game {
 }
 
 trait Parser<T> {
-    fn parse(input: &str) -> IResult<&str, T>;
+    fn parse(input: &str) -> NomResult<&str, T>;
 }
 
 impl std::str::FromStr for Game {
@@ -61,7 +81,7 @@ impl std::str::FromStr for Game {
 }
 
 impl Parser<Game> for Game {
-    fn parse(input: &str) -> IResult<&str, Self> {
+    fn parse(input: &str) -> NomResult<&str, Self> {
         map(separated_list1(newline, many1(Tile::parse)), |rows| {
             let map = Self::create_map(rows);
             let bounds = Self::calculate_bounds(&map);
@@ -200,7 +220,7 @@ enum Tile {
 }
 
 impl Parser<Option<Tile>> for Tile {
-    fn parse(input: &str) -> IResult<&str, Option<Self>> {
+    fn parse(input: &str) -> NomResult<&str, Option<Self>> {
         alt((
             value(None, tag(".")),
             value(Some(Self::MirrorUL), tag("\\")),
