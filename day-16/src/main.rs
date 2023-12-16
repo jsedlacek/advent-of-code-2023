@@ -16,11 +16,15 @@ enum GameError {
     NoBounds,
 }
 
+type Result<T, E = GameError> = std::result::Result<T, E>;
+
+impl std::error::Error for GameError {}
+
 impl std::fmt::Display for GameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let description = match self {
-            Self::Parse(_) => "Cannot parse game",
-            Self::NoBounds => "Game has no bounds",
+            Self::Parse(_) => "cannot parse game input",
+            Self::NoBounds => "game has no bounds",
         };
 
         description.fmt(f)
@@ -33,8 +37,6 @@ impl From<nom::Err<nom::error::Error<&str>>> for GameError {
     }
 }
 
-impl std::error::Error for GameError {}
-
 type BoundsInclusive = (i64, i64);
 
 #[derive(Debug, Clone)]
@@ -43,10 +45,14 @@ struct Game {
     bounds: (BoundsInclusive, BoundsInclusive),
 }
 
+trait Parser<T> {
+    fn parse(input: &str) -> IResult<&str, T>;
+}
+
 impl std::str::FromStr for Game {
     type Err = GameError;
 
-    fn from_str(input: &str) -> Result<Self, GameError> {
+    fn from_str(input: &str) -> Result<Self> {
         let (_, game) =
             all_consuming(delimited(many0(newline), Self::parse, many0(newline)))(input)?;
 
@@ -54,7 +60,7 @@ impl std::str::FromStr for Game {
     }
 }
 
-impl Game {
+impl Parser<Game> for Game {
     fn parse(input: &str) -> IResult<&str, Self> {
         map(separated_list1(newline, many1(Tile::parse)), |rows| {
             let map = Self::create_map(rows);
@@ -63,7 +69,9 @@ impl Game {
             Self { map, bounds }
         })(input)
     }
+}
 
+impl Game {
     fn create_map(rows: Vec<Vec<Option<Tile>>>) -> HashMap<Position, Tile> {
         rows.iter()
             .enumerate()
@@ -91,7 +99,7 @@ impl Game {
         self.calculate_energy(Position(0, 0), Direction::Right)
     }
 
-    fn part2(&self) -> Result<u64, GameError> {
+    fn part2(&self) -> Result<u64> {
         let ((min_x, max_x), (min_y, max_y)) = self.bounds;
 
         let horizontal = [(min_x, Direction::Right), (max_x, Direction::Left)]
@@ -191,7 +199,7 @@ enum Tile {
     SplitterL, // horizontal
 }
 
-impl Tile {
+impl Parser<Option<Tile>> for Tile {
     fn parse(input: &str) -> IResult<&str, Option<Self>> {
         alt((
             value(None, tag(".")),
@@ -231,7 +239,7 @@ impl Beam {
     }
 }
 
-fn main() -> Result<(), GameError> {
+fn main() -> Result<()> {
     let game = include_str!("input.txt").parse::<Game>()?;
 
     println!("Part 1: {}", game.part1());
@@ -241,7 +249,7 @@ fn main() -> Result<(), GameError> {
 }
 
 #[test]
-fn part1() -> Result<(), GameError> {
+fn part1() -> Result<()> {
     let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part1(), 46);
@@ -250,7 +258,7 @@ fn part1() -> Result<(), GameError> {
 }
 
 #[test]
-fn part2() -> Result<(), GameError> {
+fn part2() -> Result<()> {
     let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part2()?, 51);
