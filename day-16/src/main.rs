@@ -6,7 +6,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::newline,
-    combinator::{all_consuming, value},
+    combinator::{all_consuming, map, value},
     multi::{many0, many1, separated_list1},
     sequence::delimited,
     IResult,
@@ -23,22 +23,31 @@ struct Game {
 impl std::str::FromStr for Game {
     type Err = anyhow::Error;
 
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let (_, rows) = all_consuming(delimited(
-            many0(newline),
-            separated_list1(newline, many1(Tile::parse)),
-            many0(newline),
-        ))(input)
-        .map_err(|e| anyhow::Error::new(e.to_owned()).context("Failed to parse game input"))?;
+    fn from_str(input: &str) -> Result<Self> {
+        let (_, game) = Self::parse(input)
+            .map_err(|e| anyhow!(e.to_owned()).context("Failed to parse game input"))?;
 
-        let map = Self::create_map(rows);
-        let bounds = Self::calculate_bounds(&map);
-
-        Ok(Self { map, bounds })
+        Ok(game)
     }
 }
 
 impl Game {
+    fn parse(input: &str) -> IResult<&str, Self> {
+        map(
+            all_consuming(delimited(
+                many0(newline),
+                separated_list1(newline, many1(Tile::parse)),
+                many0(newline),
+            )),
+            |rows| {
+                let map = Self::create_map(rows);
+                let bounds = Self::calculate_bounds(&map);
+
+                Self { map, bounds }
+            },
+        )(input)
+    }
+
     fn create_map(rows: Vec<Vec<Option<Tile>>>) -> HashMap<Position, Tile> {
         rows.iter()
             .enumerate()
