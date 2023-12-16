@@ -12,20 +12,21 @@ use nom::{
     IResult,
 };
 
-type BoundsInclusive = ((i64, i64), (i64, i64));
+type BoundsInclusive = (i64, i64);
 
 #[derive(Debug, Clone)]
 struct Game {
     map: HashMap<Position, Tile>,
-    bounds: BoundsInclusive,
+    bounds: (BoundsInclusive, BoundsInclusive),
 }
 
 impl std::str::FromStr for Game {
     type Err = anyhow::Error;
 
     fn from_str(input: &str) -> Result<Self> {
-        let (_, game) = Self::parse(input)
-            .map_err(|e| anyhow!(e.to_owned()).context("Failed to parse game input"))?;
+        let (_, game) =
+            all_consuming(delimited(many0(newline), Self::parse, many0(newline)))(input)
+                .map_err(|e| anyhow!(e.to_owned()).context("Failed to parse game input"))?;
 
         Ok(game)
     }
@@ -33,19 +34,12 @@ impl std::str::FromStr for Game {
 
 impl Game {
     fn parse(input: &str) -> IResult<&str, Self> {
-        map(
-            all_consuming(delimited(
-                many0(newline),
-                separated_list1(newline, many1(Tile::parse)),
-                many0(newline),
-            )),
-            |rows| {
-                let map = Self::create_map(rows);
-                let bounds = Self::calculate_bounds(&map);
+        map(separated_list1(newline, many1(Tile::parse)), |rows| {
+            let map = Self::create_map(rows);
+            let bounds = Self::calculate_bounds(&map);
 
-                Self { map, bounds }
-            },
-        )(input)
+            Self { map, bounds }
+        })(input)
     }
 
     fn create_map(rows: Vec<Vec<Option<Tile>>>) -> HashMap<Position, Tile> {
@@ -63,7 +57,7 @@ impl Game {
             .collect()
     }
 
-    fn calculate_bounds(map: &HashMap<Position, Tile>) -> BoundsInclusive {
+    fn calculate_bounds(map: &HashMap<Position, Tile>) -> (BoundsInclusive, BoundsInclusive) {
         let max_x = map.keys().map(|pos| pos.0).max().unwrap_or(-1);
 
         let max_y = map.keys().map(|pos| pos.1).max().unwrap_or(-1);
