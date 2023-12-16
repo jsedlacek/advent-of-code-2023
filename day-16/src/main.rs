@@ -1,7 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use anyhow::{anyhow, Result};
-
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -12,6 +10,31 @@ use nom::{
     IResult,
 };
 
+#[derive(Debug)]
+enum GameError {
+    Parse(nom::Err<nom::error::Error<String>>),
+    NoBounds,
+}
+
+impl std::fmt::Display for GameError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let description = match self {
+            Self::Parse(_) => "Cannot parse game",
+            Self::NoBounds => "Game has no bounds",
+        };
+
+        description.fmt(f)
+    }
+}
+
+impl From<nom::Err<nom::error::Error<&str>>> for GameError {
+    fn from(err: nom::Err<nom::error::Error<&str>>) -> Self {
+        Self::Parse(err.to_owned())
+    }
+}
+
+impl std::error::Error for GameError {}
+
 type BoundsInclusive = (i64, i64);
 
 #[derive(Debug, Clone)]
@@ -21,12 +44,11 @@ struct Game {
 }
 
 impl std::str::FromStr for Game {
-    type Err = anyhow::Error;
+    type Err = GameError;
 
-    fn from_str(input: &str) -> Result<Self> {
+    fn from_str(input: &str) -> Result<Self, GameError> {
         let (_, game) =
-            all_consuming(delimited(many0(newline), Self::parse, many0(newline)))(input)
-                .map_err(|e| anyhow!(e.to_owned()).context("Failed to parse game input"))?;
+            all_consuming(delimited(many0(newline), Self::parse, many0(newline)))(input)?;
 
         Ok(game)
     }
@@ -69,7 +91,7 @@ impl Game {
         self.calculate_energy(Position(0, 0), Direction::Right)
     }
 
-    fn part2(&self) -> Result<u64> {
+    fn part2(&self) -> Result<u64, GameError> {
         let ((min_x, max_x), (min_y, max_y)) = self.bounds;
 
         let horizontal = [(min_x, Direction::Right), (max_x, Direction::Left)]
@@ -84,7 +106,7 @@ impl Game {
             .chain(vertical)
             .map(|(pos, dir)| self.calculate_energy(pos, dir))
             .max()
-            .ok_or(anyhow!("No bounds"))
+            .ok_or(GameError::NoBounds)
     }
 
     fn calculate_energy(&self, start_pos: Position, start_dir: Direction) -> u64 {
@@ -209,7 +231,7 @@ impl Beam {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<(), GameError> {
     let game = include_str!("input.txt").parse::<Game>()?;
 
     println!("Part 1: {}", game.part1());
@@ -219,7 +241,7 @@ fn main() -> Result<()> {
 }
 
 #[test]
-fn part1() -> Result<()> {
+fn part1() -> Result<(), GameError> {
     let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part1(), 46);
@@ -228,7 +250,7 @@ fn part1() -> Result<()> {
 }
 
 #[test]
-fn part2() -> Result<()> {
+fn part2() -> Result<(), GameError> {
     let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part2()?, 51);
