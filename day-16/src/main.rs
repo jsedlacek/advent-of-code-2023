@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    ops::RangeInclusive,
-};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use anyhow::{anyhow, Result};
 
@@ -17,7 +14,7 @@ use nom::{
 #[derive(Debug, Clone)]
 struct Game {
     map: HashMap<Position, Tile>,
-    bounds: (RangeInclusive<i64>, RangeInclusive<i64>),
+    bounds: ((i64, i64), (i64, i64)),
 }
 
 impl Game {
@@ -34,11 +31,11 @@ impl Game {
     }
 
     fn create_map(rows: Vec<Vec<Option<Tile>>>) -> HashMap<Position, Tile> {
-        rows.into_iter()
+        rows.iter()
             .enumerate()
             .flat_map(|(y, row)| {
                 let y = y as i64;
-                row.into_iter().enumerate().filter_map(move |(x, tile)| {
+                row.iter().enumerate().filter_map(move |(x, tile)| {
                     tile.map(|tile| {
                         let x = x as i64;
                         (Position(x, y), tile)
@@ -48,9 +45,7 @@ impl Game {
             .collect()
     }
 
-    fn calculate_bounds(
-        map: &HashMap<Position, Tile>,
-    ) -> Result<(RangeInclusive<i64>, RangeInclusive<i64>)> {
+    fn calculate_bounds(map: &HashMap<Position, Tile>) -> Result<((i64, i64), (i64, i64))> {
         let max_x = map
             .keys()
             .map(|pos| pos.0)
@@ -63,7 +58,7 @@ impl Game {
             .max()
             .ok_or(anyhow!("No keys"))?;
 
-        Ok(((0..=max_x), (0..=max_y)))
+        Ok(((0, max_x), (0, max_y)))
     }
 
     fn part1(&self) -> u64 {
@@ -71,29 +66,15 @@ impl Game {
     }
 
     fn part2(&self) -> Result<u64> {
-        let horizontal = [
-            (*self.bounds.0.start(), Direction::Right),
-            (*self.bounds.0.end(), Direction::Left),
-        ]
-        .into_iter()
-        .flat_map(|(start_x, dir)| {
-            self.bounds
-                .1
-                .clone()
-                .map(move |y| (Position(start_x, y), dir))
-        });
+        let ((min_x, max_x), (min_y, max_y)) = self.bounds;
 
-        let vertical = [
-            (*self.bounds.1.start(), Direction::Down),
-            (*self.bounds.1.end(), Direction::Up),
-        ]
-        .into_iter()
-        .flat_map(|(start_y, dir)| {
-            self.bounds
-                .0
-                .clone()
-                .map(move |x| (Position(x, start_y), dir))
-        });
+        let horizontal = [(min_x, Direction::Right), (max_x, Direction::Left)]
+            .into_iter()
+            .flat_map(|(start_x, dir)| (min_y..=max_y).map(move |y| (Position(start_x, y), dir)));
+
+        let vertical = [(min_y, Direction::Down), (max_y, Direction::Up)]
+            .into_iter()
+            .flat_map(|(start_y, dir)| (min_x..=max_x).map(move |x| (Position(x, start_y), dir)));
 
         horizontal
             .chain(vertical)
@@ -135,7 +116,9 @@ impl Game {
     }
 
     fn is_pos_valid(&self, pos: Position) -> bool {
-        self.bounds.0.contains(&pos.0) && self.bounds.1.contains(&pos.1)
+        let ((min_x, max_x), (min_y, max_y)) = self.bounds;
+
+        (min_x..=max_x).contains(&pos.0) && (min_y..=max_y).contains(&pos.1)
     }
 }
 
