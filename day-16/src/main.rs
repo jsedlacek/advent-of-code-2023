@@ -117,7 +117,7 @@ impl Game {
             let next_dirs = if let Some(&next_tile) = self.map.get(&pos) {
                 Beam::encounter(dir, next_tile)
             } else {
-                HashSet::from([dir])
+                Vec::from([dir])
             };
 
             let mut next_beams = next_dirs
@@ -184,29 +184,27 @@ impl Tile {
 struct Beam;
 
 impl Beam {
-    fn encounter(dir: Direction, tile: Tile) -> HashSet<Direction> {
+    fn encounter(dir: Direction, tile: Tile) -> Vec<Direction> {
         match (dir, tile) {
-            (Direction::Right, Tile::MirrorUL) => HashSet::from([Direction::Down]),
-            (Direction::Right, Tile::MirrorUR) => HashSet::from([Direction::Up]),
-            (Direction::Right, Tile::SplitterU) => HashSet::from([Direction::Up, Direction::Down]),
-            (Direction::Right, Tile::SplitterL) => HashSet::from([Direction::Right]),
+            (Direction::Right, Tile::MirrorUL) => Vec::from([Direction::Down]),
+            (Direction::Right, Tile::MirrorUR) => Vec::from([Direction::Up]),
+            (Direction::Right, Tile::SplitterU) => Vec::from([Direction::Up, Direction::Down]),
+            (Direction::Right, Tile::SplitterL) => Vec::from([Direction::Right]),
 
-            (Direction::Left, Tile::MirrorUL) => HashSet::from([Direction::Up]),
-            (Direction::Left, Tile::MirrorUR) => HashSet::from([Direction::Down]),
-            (Direction::Left, Tile::SplitterU) => HashSet::from([Direction::Up, Direction::Down]),
-            (Direction::Left, Tile::SplitterL) => HashSet::from([Direction::Left]),
+            (Direction::Left, Tile::MirrorUL) => Vec::from([Direction::Up]),
+            (Direction::Left, Tile::MirrorUR) => Vec::from([Direction::Down]),
+            (Direction::Left, Tile::SplitterU) => Vec::from([Direction::Up, Direction::Down]),
+            (Direction::Left, Tile::SplitterL) => Vec::from([Direction::Left]),
 
-            (Direction::Up, Tile::MirrorUL) => HashSet::from([Direction::Left]),
-            (Direction::Up, Tile::MirrorUR) => HashSet::from([Direction::Right]),
-            (Direction::Up, Tile::SplitterU) => HashSet::from([Direction::Up]),
-            (Direction::Up, Tile::SplitterL) => HashSet::from([Direction::Left, Direction::Right]),
+            (Direction::Up, Tile::MirrorUL) => Vec::from([Direction::Left]),
+            (Direction::Up, Tile::MirrorUR) => Vec::from([Direction::Right]),
+            (Direction::Up, Tile::SplitterU) => Vec::from([Direction::Up]),
+            (Direction::Up, Tile::SplitterL) => Vec::from([Direction::Left, Direction::Right]),
 
-            (Direction::Down, Tile::MirrorUL) => HashSet::from([Direction::Right]),
-            (Direction::Down, Tile::MirrorUR) => HashSet::from([Direction::Left]),
-            (Direction::Down, Tile::SplitterU) => HashSet::from([Direction::Down]),
-            (Direction::Down, Tile::SplitterL) => {
-                HashSet::from([Direction::Left, Direction::Right])
-            }
+            (Direction::Down, Tile::MirrorUL) => Vec::from([Direction::Right]),
+            (Direction::Down, Tile::MirrorUR) => Vec::from([Direction::Left]),
+            (Direction::Down, Tile::SplitterU) => Vec::from([Direction::Down]),
+            (Direction::Down, Tile::SplitterL) => Vec::from([Direction::Left, Direction::Right]),
         }
     }
 }
