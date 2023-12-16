@@ -117,7 +117,7 @@ impl Game {
             let next_dirs = if let Some(&next_tile) = self.map.get(&pos) {
                 Beam::encounter(dir, next_tile)
             } else {
-                Vec::from([dir])
+                vec![dir]
             };
 
             let mut next_beams = next_dirs
@@ -163,10 +163,10 @@ enum Direction {
 
 #[derive(Debug, Clone, Copy)]
 enum Tile {
-    MirrorUL,
-    MirrorUR,
-    SplitterU,
-    SplitterL,
+    MirrorUL,  // upper-left to downer-right
+    MirrorUR,  // upper-right to downer-left
+    SplitterU, // vertical
+    SplitterL, // horizontal
 }
 
 impl Tile {
@@ -186,25 +186,25 @@ struct Beam;
 impl Beam {
     fn encounter(dir: Direction, tile: Tile) -> Vec<Direction> {
         match (dir, tile) {
-            (Direction::Right, Tile::MirrorUL) => Vec::from([Direction::Down]),
-            (Direction::Right, Tile::MirrorUR) => Vec::from([Direction::Up]),
-            (Direction::Right, Tile::SplitterU) => Vec::from([Direction::Up, Direction::Down]),
-            (Direction::Right, Tile::SplitterL) => Vec::from([Direction::Right]),
+            (Direction::Right, Tile::MirrorUL) => vec![Direction::Down],
+            (Direction::Right, Tile::MirrorUR) => vec![Direction::Up],
+            (Direction::Right, Tile::SplitterU) => vec![Direction::Up, Direction::Down],
+            (Direction::Right, Tile::SplitterL) => vec![Direction::Right],
 
-            (Direction::Left, Tile::MirrorUL) => Vec::from([Direction::Up]),
-            (Direction::Left, Tile::MirrorUR) => Vec::from([Direction::Down]),
-            (Direction::Left, Tile::SplitterU) => Vec::from([Direction::Up, Direction::Down]),
-            (Direction::Left, Tile::SplitterL) => Vec::from([Direction::Left]),
+            (Direction::Left, Tile::MirrorUL) => vec![Direction::Up],
+            (Direction::Left, Tile::MirrorUR) => vec![Direction::Down],
+            (Direction::Left, Tile::SplitterU) => vec![Direction::Up, Direction::Down],
+            (Direction::Left, Tile::SplitterL) => vec![Direction::Left],
 
-            (Direction::Up, Tile::MirrorUL) => Vec::from([Direction::Left]),
-            (Direction::Up, Tile::MirrorUR) => Vec::from([Direction::Right]),
-            (Direction::Up, Tile::SplitterU) => Vec::from([Direction::Up]),
-            (Direction::Up, Tile::SplitterL) => Vec::from([Direction::Left, Direction::Right]),
+            (Direction::Up, Tile::MirrorUL) => vec![Direction::Left],
+            (Direction::Up, Tile::MirrorUR) => vec![Direction::Right],
+            (Direction::Up, Tile::SplitterU) => vec![Direction::Up],
+            (Direction::Up, Tile::SplitterL) => vec![Direction::Left, Direction::Right],
 
-            (Direction::Down, Tile::MirrorUL) => Vec::from([Direction::Right]),
-            (Direction::Down, Tile::MirrorUR) => Vec::from([Direction::Left]),
-            (Direction::Down, Tile::SplitterU) => Vec::from([Direction::Down]),
-            (Direction::Down, Tile::SplitterL) => Vec::from([Direction::Left, Direction::Right]),
+            (Direction::Down, Tile::MirrorUL) => vec![Direction::Right],
+            (Direction::Down, Tile::MirrorUR) => vec![Direction::Left],
+            (Direction::Down, Tile::SplitterU) => vec![Direction::Down],
+            (Direction::Down, Tile::SplitterL) => vec![Direction::Left, Direction::Right],
         }
     }
 }
