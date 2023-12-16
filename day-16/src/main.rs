@@ -63,34 +63,34 @@ impl Game {
     }
 
     fn part2(&self) -> Result<u64> {
-        let from_top = self
-            .bounds
-            .0
-            .clone()
-            .map(|x| (Position(x, *self.bounds.1.start()), Direction::Down));
+        let horizontal = [
+            (*self.bounds.0.start(), Direction::Right),
+            (*self.bounds.0.end(), Direction::Left),
+        ]
+        .into_iter()
+        .map(|(start_x, dir)| {
+            self.bounds
+                .1
+                .clone()
+                .map(move |y| (Position(start_x, y), dir))
+        })
+        .flatten();
 
-        let from_bottom = self
-            .bounds
-            .0
-            .clone()
-            .map(|x| (Position(x, *self.bounds.1.end()), Direction::Up));
+        let vertical = [
+            (*self.bounds.1.start(), Direction::Down),
+            (*self.bounds.1.end(), Direction::Up),
+        ]
+        .into_iter()
+        .map(|(start_y, dir)| {
+            self.bounds
+                .0
+                .clone()
+                .map(move |x| (Position(x, start_y), dir))
+        })
+        .flatten();
 
-        let from_left = self
-            .bounds
-            .1
-            .clone()
-            .map(|y| (Position(*self.bounds.0.start(), y), Direction::Right));
-
-        let from_right = self
-            .bounds
-            .1
-            .clone()
-            .map(|y| (Position(*self.bounds.0.end(), y), Direction::Left));
-
-        from_top
-            .chain(from_bottom)
-            .chain(from_left)
-            .chain(from_right)
+        horizontal
+            .chain(vertical)
             .map(|(pos, dir)| self.calculate_energy(pos, dir))
             .max()
             .ok_or(anyhow!("No bounds"))
