@@ -141,15 +141,14 @@ struct Position(i64, i64);
 
 impl Position {
     fn move_dir(self, dir: Direction) -> Self {
-        let Self(mut x, mut y) = self;
-        match dir {
-            Direction::Up => y = self.1 - 1,
-            Direction::Down => y = self.1 + 1,
-            Direction::Left => x = self.0 - 1,
-            Direction::Right => x = self.0 + 1,
-        }
+        let Self(x, y) = self;
 
-        Self(x, y)
+        match dir {
+            Direction::Up => Self(x, y - 1),
+            Direction::Down => Self(x, y + 1),
+            Direction::Left => Self(x - 1, y),
+            Direction::Right => Self(x + 1, y),
+        }
     }
 }
 
