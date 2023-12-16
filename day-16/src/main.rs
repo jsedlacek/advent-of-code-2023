@@ -6,30 +6,39 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::newline,
-    combinator::{map_res, value},
-    multi::{many1, separated_list1},
+    combinator::{all_consuming, value},
+    multi::{many0, many1, separated_list1},
+    sequence::delimited,
     IResult,
 };
+
+type BoundsInclusive = ((i64, i64), (i64, i64));
 
 #[derive(Debug, Clone)]
 struct Game {
     map: HashMap<Position, Tile>,
-    bounds: ((i64, i64), (i64, i64)),
+    bounds: BoundsInclusive,
+}
+
+impl std::str::FromStr for Game {
+    type Err = anyhow::Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let (_, rows) = all_consuming(delimited(
+            many0(newline),
+            separated_list1(newline, many1(Tile::parse)),
+            many0(newline),
+        ))(input)
+        .map_err(|e| anyhow::Error::new(e.to_owned()).context("Failed to parse game input"))?;
+
+        let map = Self::create_map(rows);
+        let bounds = Self::calculate_bounds(&map);
+
+        Ok(Self { map, bounds })
+    }
 }
 
 impl Game {
-    fn parse(input: &str) -> IResult<&str, Self> {
-        map_res(
-            separated_list1(newline, many1(Tile::parse)),
-            |rows| -> Result<Self> {
-                let map = Self::create_map(rows);
-                let bounds = Self::calculate_bounds(&map)?;
-
-                Ok(Self { map, bounds })
-            },
-        )(input)
-    }
-
     fn create_map(rows: Vec<Vec<Option<Tile>>>) -> HashMap<Position, Tile> {
         rows.iter()
             .enumerate()
@@ -45,20 +54,12 @@ impl Game {
             .collect()
     }
 
-    fn calculate_bounds(map: &HashMap<Position, Tile>) -> Result<((i64, i64), (i64, i64))> {
-        let max_x = map
-            .keys()
-            .map(|pos| pos.0)
-            .max()
-            .ok_or(anyhow!("No keys"))?;
+    fn calculate_bounds(map: &HashMap<Position, Tile>) -> BoundsInclusive {
+        let max_x = map.keys().map(|pos| pos.0).max().unwrap_or(-1);
 
-        let max_y = map
-            .keys()
-            .map(|pos| pos.1)
-            .max()
-            .ok_or(anyhow!("No keys"))?;
+        let max_y = map.keys().map(|pos| pos.1).max().unwrap_or(-1);
 
-        Ok(((0, max_x), (0, max_y)))
+        ((0, max_x), (0, max_y))
     }
 
     fn part1(&self) -> u64 {
@@ -206,7 +207,7 @@ impl Beam {
 }
 
 fn main() -> Result<()> {
-    let (_, game) = Game::parse(include_str!("input.txt"))?;
+    let game = include_str!("input.txt").parse::<Game>()?;
 
     println!("Part 1: {}", game.part1());
     println!("Part 2: {}", game.part2()?);
@@ -216,7 +217,7 @@ fn main() -> Result<()> {
 
 #[test]
 fn part1() -> Result<()> {
-    let (_, game) = Game::parse(include_str!("sample-input.txt"))?;
+    let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part1(), 46);
 
@@ -225,7 +226,7 @@ fn part1() -> Result<()> {
 
 #[test]
 fn part2() -> Result<()> {
-    let (_, game) = Game::parse(include_str!("sample-input.txt"))?;
+    let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part2()?, 51);
 
