@@ -160,6 +160,17 @@ enum Direction {
     Left,
 }
 
+impl Direction {
+    fn inverse(self) -> Self {
+        match self {
+            Self::Up => Self::Down,
+            Self::Left => Self::Right,
+            Self::Down => Self::Up,
+            Self::Right => Self::Left,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum Tile {
     MirrorUL,  // upper-left to downer-right
@@ -190,20 +201,20 @@ impl Beam {
             (Direction::Right, Tile::SplitterU) => vec![Direction::Up, Direction::Down],
             (Direction::Right, Tile::SplitterL) => vec![Direction::Right],
 
-            (Direction::Left, Tile::MirrorUL) => vec![Direction::Up],
-            (Direction::Left, Tile::MirrorUR) => vec![Direction::Down],
-            (Direction::Left, Tile::SplitterU) => vec![Direction::Up, Direction::Down],
-            (Direction::Left, Tile::SplitterL) => vec![Direction::Left],
+            (Direction::Left, _) => Self::encounter(Direction::Right, tile)
+                .iter()
+                .map(|d| d.inverse())
+                .collect(),
 
             (Direction::Up, Tile::MirrorUL) => vec![Direction::Left],
             (Direction::Up, Tile::MirrorUR) => vec![Direction::Right],
             (Direction::Up, Tile::SplitterU) => vec![Direction::Up],
             (Direction::Up, Tile::SplitterL) => vec![Direction::Left, Direction::Right],
 
-            (Direction::Down, Tile::MirrorUL) => vec![Direction::Right],
-            (Direction::Down, Tile::MirrorUR) => vec![Direction::Left],
-            (Direction::Down, Tile::SplitterU) => vec![Direction::Down],
-            (Direction::Down, Tile::SplitterL) => vec![Direction::Left, Direction::Right],
+            (Direction::Down, _) => Self::encounter(Direction::Up, tile)
+                .iter()
+                .map(|d| d.inverse())
+                .collect(),
         }
     }
 }
