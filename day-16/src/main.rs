@@ -25,37 +25,45 @@ impl Game {
         map_res(
             separated_list1(newline, many1(Tile::parse)),
             |rows| -> Result<Self> {
-                let map: HashMap<Position, Tile> = rows
-                    .into_iter()
-                    .enumerate()
-                    .flat_map(|(y, row)| {
-                        let y = y as i64;
-                        row.into_iter().enumerate().filter_map(move |(x, tile)| {
-                            tile.map(|tile| {
-                                let x = x as i64;
-                                (Position(x, y), tile)
-                            })
-                        })
-                    })
-                    .collect();
-
-                let max_x = map
-                    .keys()
-                    .map(|pos| pos.0)
-                    .max()
-                    .ok_or(anyhow!("No keys"))?;
-
-                let max_y = map
-                    .keys()
-                    .map(|pos| pos.1)
-                    .max()
-                    .ok_or(anyhow!("No keys"))?;
-
-                let bounds = ((0..=max_x), (0..=max_y));
+                let map = Self::create_map(rows);
+                let bounds = Self::calculate_bounds(&map)?;
 
                 Ok(Self { map, bounds })
             },
         )(input)
+    }
+
+    fn create_map(rows: Vec<Vec<Option<Tile>>>) -> HashMap<Position, Tile> {
+        rows.into_iter()
+            .enumerate()
+            .flat_map(|(y, row)| {
+                let y = y as i64;
+                row.into_iter().enumerate().filter_map(move |(x, tile)| {
+                    tile.map(|tile| {
+                        let x = x as i64;
+                        (Position(x, y), tile)
+                    })
+                })
+            })
+            .collect()
+    }
+
+    fn calculate_bounds(
+        map: &HashMap<Position, Tile>,
+    ) -> Result<(RangeInclusive<i64>, RangeInclusive<i64>)> {
+        let max_x = map
+            .keys()
+            .map(|pos| pos.0)
+            .max()
+            .ok_or(anyhow!("No keys"))?;
+
+        let max_y = map
+            .keys()
+            .map(|pos| pos.1)
+            .max()
+            .ok_or(anyhow!("No keys"))?;
+
+        Ok(((0..=max_x), (0..=max_y)))
     }
 
     fn part1(&self) -> u64 {
@@ -68,26 +76,24 @@ impl Game {
             (*self.bounds.0.end(), Direction::Left),
         ]
         .into_iter()
-        .map(|(start_x, dir)| {
+        .flat_map(|(start_x, dir)| {
             self.bounds
                 .1
                 .clone()
                 .map(move |y| (Position(start_x, y), dir))
-        })
-        .flatten();
+        });
 
         let vertical = [
             (*self.bounds.1.start(), Direction::Down),
             (*self.bounds.1.end(), Direction::Up),
         ]
         .into_iter()
-        .map(|(start_y, dir)| {
+        .flat_map(|(start_y, dir)| {
             self.bounds
                 .0
                 .clone()
                 .map(move |x| (Position(x, start_y), dir))
-        })
-        .flatten();
+        });
 
         horizontal
             .chain(vertical)
@@ -120,12 +126,9 @@ impl Game {
                 vec![dir]
             };
 
-            let mut next_beams = next_dirs
-                .into_iter()
-                .map(|d| (pos.move_dir(d), d))
-                .collect();
-
-            beams.append(&mut next_beams);
+            for d in next_dirs {
+                beams.push_back((pos.move_dir(d), d));
+            }
         }
 
         energized.len() as u64
