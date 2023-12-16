@@ -58,11 +58,11 @@ impl Game {
         )(input)
     }
 
-    fn part1(&self) -> usize {
+    fn part1(&self) -> u64 {
         self.calculate_energy(Position(0, 0), Direction::Right)
     }
 
-    fn part2(&self) -> Result<usize> {
+    fn part2(&self) -> Result<u64> {
         let from_top = self
             .bounds
             .0
@@ -96,7 +96,7 @@ impl Game {
             .ok_or(anyhow!("No bounds"))
     }
 
-    fn calculate_energy(&self, start_pos: Position, start_dir: Direction) -> usize {
+    fn calculate_energy(&self, start_pos: Position, start_dir: Direction) -> u64 {
         let mut beams = VecDeque::new();
         let mut visited = HashSet::new();
         let mut energized = HashSet::new();
@@ -123,12 +123,12 @@ impl Game {
             let mut next_beams = next_dirs
                 .into_iter()
                 .map(|d| (pos.move_dir(d), d))
-                .collect::<VecDeque<_>>();
+                .collect();
 
             beams.append(&mut next_beams);
         }
 
-        energized.len()
+        energized.len() as u64
     }
 
     fn is_pos_valid(&self, pos: Position) -> bool {
