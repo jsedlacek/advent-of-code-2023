@@ -40,14 +40,20 @@ impl Game {
     fn puzzle(&self, min_steps: u64, max_steps: u64) -> Result<u64> {
         let start_pos = Position(0, 0);
 
-        let mut queue: VecDeque<(Position, Direction, u64, u64)> = VecDeque::from([
-            (start_pos, Direction::Right, 0, 0),
-            (start_pos, Direction::Down, 0, 0),
+        let mut queue: VecDeque<Entry> = VecDeque::from([
+            Entry::new(start_pos, Direction::Right, 0, 0),
+            Entry::new(start_pos, Direction::Down, 0, 0),
         ]);
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
 
-        while let Some((pos, dir, steps, heat)) = queue.pop_front() {
+        while let Some(Entry {
+            pos,
+            dir,
+            steps,
+            heat,
+        }) = queue.pop_front()
+        {
             if !self.map.contains_key(&pos) {
                 continue;
             }
@@ -65,7 +71,7 @@ impl Game {
             if steps < max_steps {
                 let next_pos = pos.move_dir(dir);
                 if let Some(next_tile_heat) = self.map.get(&next_pos) {
-                    queue.push_back((next_pos, dir, steps + 1, heat + next_tile_heat))
+                    queue.push_back(Entry::new(next_pos, dir, steps + 1, heat + next_tile_heat))
                 }
             }
 
@@ -75,7 +81,7 @@ impl Game {
 
                     let next_pos = pos.move_dir(next_dir);
                     if let Some(next_tile_heat) = self.map.get(&next_pos) {
-                        queue.push_back((next_pos, next_dir, 1, heat + next_tile_heat))
+                        queue.push_back(Entry::new(next_pos, next_dir, 1, heat + next_tile_heat))
                     }
                 }
             }
@@ -100,6 +106,37 @@ impl Game {
 
     fn part2(&self) -> Result<u64> {
         self.puzzle(4, 10)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct Entry {
+    pos: Position,
+    dir: Direction,
+    steps: u64,
+    heat: u64,
+}
+
+impl Entry {
+    fn new(pos: Position, dir: Direction, steps: u64, heat: u64) -> Self {
+        Self {
+            pos,
+            dir,
+            steps,
+            heat,
+        }
+    }
+}
+
+impl PartialOrd for Entry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.heat.cmp(&(other.heat))
     }
 }
 
