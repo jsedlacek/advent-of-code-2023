@@ -4,7 +4,6 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{anyhow, Result};
 use nom::{
     character::complete::{newline, one_of},
     combinator::{all_consuming, map_res},
@@ -14,6 +13,34 @@ use nom::{
 };
 
 #[derive(Debug)]
+enum GameError {
+    Parse(nom::Err<nom::error::Error<String>>),
+    NoKeys,
+    EndUnreachable,
+}
+
+impl Display for GameError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let description = match self {
+            Self::Parse(_) => "parse error",
+            Self::NoKeys => "there are no keys in map",
+            Self::EndUnreachable => "end point is unreachable",
+        };
+        write!(f, "{description}")
+    }
+}
+
+impl std::error::Error for GameError {}
+
+impl From<nom::Err<nom::error::Error<&str>>> for GameError {
+    fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
+        Self::Parse(value.to_owned())
+    }
+}
+
+type Result<T, E = GameError> = std::result::Result<T, E>;
+
+#[derive(Debug)]
 struct Game {
     map: HashMap<Position, u64>,
     max_x: i64,
@@ -21,12 +48,11 @@ struct Game {
 }
 
 impl FromStr for Game {
-    type Err = anyhow::Error;
+    type Err = GameError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let (_, game) =
-            all_consuming(delimited(many0(newline), Game::parse, many0(newline)))(input)
-                .map_err(|e| e.to_owned())?;
+            all_consuming(delimited(many0(newline), Game::parse, many0(newline)))(input)?;
 
         Ok(game)
     }
@@ -56,13 +82,13 @@ impl Game {
                     .keys()
                     .map(|Position(x, _)| x)
                     .max()
-                    .ok_or(anyhow!("No keys"))?;
+                    .ok_or(GameError::NoKeys)?;
 
                 let max_y = *map
                     .keys()
                     .map(|Position(_, y)| y)
                     .max()
-                    .ok_or(anyhow!("No keys"))?;
+                    .ok_or(GameError::NoKeys)?;
 
                 Ok(Self { map, max_x, max_y })
             },
@@ -123,7 +149,7 @@ impl Game {
             }
         }
 
-        Err(anyhow!("End unreachable"))
+        Err(GameError::EndUnreachable)
     }
 
     fn part1(&self) -> Result<u64> {
@@ -142,10 +168,11 @@ impl Game {
         steps: u64,
         turn: Option<Turn>,
     ) -> Option<Entry> {
-        let mut next_dir = dir;
-        if let Some(turn) = turn {
-            next_dir = dir.turn(turn);
-        }
+        let next_dir = if let Some(turn) = turn {
+            dir.turn(turn)
+        } else {
+            dir
+        };
 
         let next_steps = if turn.is_some() { 1 } else { steps + 1 };
 
