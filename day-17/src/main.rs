@@ -97,15 +97,7 @@ impl Game {
             }
         }
 
-        dbg!(results.len());
-
-        let total_heat = results
-            .iter()
-            .filter_map(|((pos, _, _), heat)| if *pos == end_pos { Some(*heat) } else { None })
-            .min()
-            .ok_or(anyhow!("End unreachable"))?;
-
-        Ok(total_heat)
+        Err(anyhow!("End unreachable"))
     }
 
     fn part1(&self) -> Result<u64> {
