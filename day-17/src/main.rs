@@ -139,7 +139,7 @@ impl Game {
             }
 
             if steps >= min_steps {
-                for turn in [Turn::Left, Turn::Right] {
+                for turn in [Turn::Clockwise, Turn::CounterClockwise] {
                     if let Some(entry) =
                         self.calculate_next_entry(pos, dir, heat, steps, Some(turn))
                     {
@@ -250,23 +250,23 @@ enum Direction {
 impl Direction {
     fn turn(&self, turn: Turn) -> Direction {
         match (self, turn) {
-            (Direction::Right, Turn::Left) => Direction::Up,
-            (Direction::Down, Turn::Left) => Direction::Right,
-            (Direction::Left, Turn::Left) => Direction::Down,
-            (Direction::Up, Turn::Left) => Direction::Left,
+            (Direction::Right, Turn::Clockwise) => Direction::Down,
+            (Direction::Down, Turn::Clockwise) => Direction::Left,
+            (Direction::Left, Turn::Clockwise) => Direction::Up,
+            (Direction::Up, Turn::Clockwise) => Direction::Right,
 
-            (Direction::Right, Turn::Right) => Direction::Down,
-            (Direction::Down, Turn::Right) => Direction::Left,
-            (Direction::Left, Turn::Right) => Direction::Up,
-            (Direction::Up, Turn::Right) => Direction::Right,
+            (Direction::Right, Turn::CounterClockwise) => Direction::Up,
+            (Direction::Down, Turn::CounterClockwise) => Direction::Right,
+            (Direction::Left, Turn::CounterClockwise) => Direction::Down,
+            (Direction::Up, Turn::CounterClockwise) => Direction::Left,
         }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 enum Turn {
-    Left,
-    Right,
+    Clockwise,
+    CounterClockwise,
 }
 
 fn main() -> Result<()> {
