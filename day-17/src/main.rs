@@ -38,8 +38,8 @@ impl Game {
         let start_pos = Position(0, 0);
 
         let mut queue: VecDeque<(Position, Direction, u64, u64)> = VecDeque::from([
-            (start_pos, Direction::Right, 1, 0),
-            (start_pos, Direction::Down, 1, 0),
+            (start_pos.move_dir(Direction::Right), Direction::Right, 1, 0),
+            (start_pos.move_dir(Direction::Down), Direction::Down, 1, 0),
         ]);
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
@@ -77,12 +77,7 @@ impl Game {
             .min()
             .ok_or(anyhow!("End unreachable"))?;
 
-        let start_heat = *self
-            .map
-            .get(&start_pos)
-            .ok_or(anyhow!("Start pos not available"))?;
-
-        Ok(total_heat - start_heat)
+        Ok(total_heat)
     }
 }
 
