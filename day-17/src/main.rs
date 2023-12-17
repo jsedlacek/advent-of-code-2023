@@ -1,5 +1,6 @@
 use std::{
-    collections::{BTreeSet, HashMap},
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
     fmt::Display,
     str::FromStr,
 };
@@ -98,21 +99,21 @@ impl Game {
     fn puzzle(&self, min_steps: u64, max_steps: u64) -> Result<u64> {
         let start_pos = Position(0, 0);
 
-        let mut queue = BTreeSet::from([
-            Entry::new(start_pos, Direction::Right, 0, 0),
-            Entry::new(start_pos, Direction::Down, 0, 0),
+        let mut queue = BinaryHeap::from([
+            Reverse(Entry::new(start_pos, Direction::Right, 0, 0)),
+            Reverse(Entry::new(start_pos, Direction::Down, 0, 0)),
         ]);
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
 
         let end_pos = Position(self.max_x, self.max_y);
 
-        while let Some(Entry {
+        while let Some(Reverse(Entry {
             pos,
             dir,
             steps,
             heat,
-        }) = queue.pop_first()
+        })) = queue.pop()
         {
             if !self.map.contains_key(&pos) {
                 continue;
@@ -134,7 +135,7 @@ impl Game {
 
             if steps < max_steps {
                 if let Some(entry) = self.calculate_next_entry(pos, dir, heat, steps, None) {
-                    queue.insert(entry);
+                    queue.push(Reverse(entry));
                 }
             }
 
@@ -143,7 +144,7 @@ impl Game {
                     if let Some(entry) =
                         self.calculate_next_entry(pos, dir, heat, steps, Some(turn))
                     {
-                        queue.insert(entry);
+                        queue.push(Reverse(entry));
                     }
                 }
             }
@@ -307,19 +308,8 @@ fn part2_2() -> Result<()> {
 
 #[test]
 fn entry() {
-    let tree = BTreeSet::from([
-        Entry::new(Position(0, 0), Direction::Up, 0, 1),
-        Entry::new(Position(0, 0), Direction::Up, 0, 2),
-        Entry::new(Position(0, 0), Direction::Up, 0, 0),
-    ]);
-
-    assert_eq!(
-        tree.first(),
-        Some(&Entry::new(Position(0, 0), Direction::Up, 0, 0))
-    );
-
-    assert_eq!(
-        tree.last(),
-        Some(&Entry::new(Position(0, 0), Direction::Up, 0, 2))
+    assert!(
+        Entry::new(Position(0, 0), Direction::Up, 0, 1)
+            < Entry::new(Position(0, 0), Direction::Up, 0, 2)
     );
 }
