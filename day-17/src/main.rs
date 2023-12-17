@@ -5,6 +5,7 @@ use std::{
     str::FromStr,
 };
 
+use anyhow::{anyhow, Result};
 use nom::{
     character::complete::{newline, one_of},
     combinator::{all_consuming, map_res},
@@ -14,46 +15,19 @@ use nom::{
 };
 
 #[derive(Debug)]
-enum GameError {
-    Parse(nom::Err<nom::error::Error<String>>),
-    NoKeys,
-    EndUnreachable,
-}
-
-impl Display for GameError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let description = match self {
-            Self::Parse(_) => "parsing error",
-            Self::NoKeys => "there are no keys in map",
-            Self::EndUnreachable => "end point is unreachable",
-        };
-        write!(f, "{description}")
-    }
-}
-
-impl std::error::Error for GameError {}
-
-impl From<nom::Err<nom::error::Error<&str>>> for GameError {
-    fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
-        Self::Parse(value.to_owned())
-    }
-}
-
-type Result<T, E = GameError> = std::result::Result<T, E>;
-
-#[derive(Debug)]
 struct Game {
-    map: Vec<Vec<u64>>,
+    map: HashMap<Position, u64>,
     max_x: i64,
     max_y: i64,
 }
 
 impl FromStr for Game {
-    type Err = GameError;
+    type Err = anyhow::Error;
 
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
+    fn from_str(input: &str) -> Result<Self> {
         let (_, game) =
-            all_consuming(delimited(many0(newline), Game::parse, many0(newline)))(input)?;
+            all_consuming(delimited(many0(newline), Game::parse, many0(newline)))(input)
+                .map_err(|e| e.to_owned())?;
 
         Ok(game)
     }
@@ -69,9 +43,27 @@ impl Game {
                 })),
             ),
             |map| -> Result<Self> {
-                let max_x = (map.first().ok_or(GameError::NoKeys)?.len() - 1) as i64;
+                let map: HashMap<Position, u64> = map
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(y, row)| {
+                        row.into_iter()
+                            .enumerate()
+                            .map(move |(x, heat)| (Position(x as i64, y as i64), heat))
+                    })
+                    .collect();
 
-                let max_y = map.len().checked_sub(1).ok_or(GameError::NoKeys)? as i64;
+                let max_x = *map
+                    .keys()
+                    .map(|Position(x, _)| x)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
+
+                let max_y = *map
+                    .keys()
+                    .map(|Position(_, y)| y)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
 
                 Ok(Self { map, max_x, max_y })
             },
@@ -81,14 +73,14 @@ impl Game {
     fn puzzle(&self, min_steps: u64, max_steps: u64) -> Result<u64> {
         let start_pos = Position(0, 0);
 
+        let end_pos = Position(self.max_x, self.max_y);
+
         let mut queue = BinaryHeap::from([
             Reverse(Entry::new(start_pos, Direction::Right, 0, 0)),
             Reverse(Entry::new(start_pos, Direction::Down, 0, 0)),
         ]);
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
-
-        let end_pos = Position(self.max_x, self.max_y);
 
         while let Some(Reverse(Entry {
             pos,
@@ -97,7 +89,7 @@ impl Game {
             heat,
         })) = queue.pop()
         {
-            if !self.is_position_valid(pos) {
+            if !self.map.contains_key(&pos) {
                 continue;
             }
 
@@ -132,7 +124,7 @@ impl Game {
             }
         }
 
-        Err(GameError::EndUnreachable)
+        Err(anyhow!("End unreachable"))
     }
 
     fn part1(&self) -> Result<u64> {
@@ -141,14 +133,6 @@ impl Game {
 
     fn part2(&self) -> Result<u64> {
         self.puzzle(4, 10)
-    }
-
-    fn is_position_valid(&self, pos: Position) -> bool {
-        if pos.0 < 0 || pos.0 > self.max_x || pos.1 < 0 || pos.1 > self.max_y {
-            false
-        } else {
-            true
-        }
     }
 
     fn calculate_next_entry(
@@ -169,13 +153,13 @@ impl Game {
 
         let next_pos = pos.move_dir(next_dir);
 
-        if !self.is_position_valid(next_pos) {
-            return None;
+        match self.map.get(&next_pos) {
+            None => None,
+            Some(next_tile_heat) => {
+                let next_heat = heat + next_tile_heat;
+                Some(Entry::new(next_pos, next_dir, next_steps, next_heat))
+            }
         }
-
-        let next_tile_heat = self.map[next_pos.1 as usize][next_pos.0 as usize];
-        let next_heat = heat + next_tile_heat;
-        Some(Entry::new(next_pos, next_dir, next_steps, next_heat))
     }
 }
 
@@ -305,5 +289,15 @@ fn entry() {
     assert!(
         Entry::new(Position(0, 0), Direction::Up, 0, 1)
             < Entry::new(Position(0, 0), Direction::Up, 0, 2)
+    );
+
+    assert!(
+        Reverse(Entry::new(Position(0, 0), Direction::Up, 0, 1))
+            > Reverse(Entry::new(Position(0, 0), Direction::Up, 0, 2))
+    );
+
+    assert!(
+        Entry::new(Position(0, 0), Direction::Up, 0, 1)
+            == Entry::new(Position(0, 0), Direction::Up, 0, 1)
     );
 }
