@@ -43,7 +43,7 @@ type Result<T, E = GameError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 struct Game {
-    map: HashMap<Position, u64>,
+    map: Vec<Vec<u64>>,
     max_x: i64,
     max_y: i64,
 }
@@ -68,28 +68,10 @@ impl Game {
                     c.to_string().parse::<u64>()
                 })),
             ),
-            |rows| -> Result<Self> {
-                let map: HashMap<Position, u64> = rows
-                    .into_iter()
-                    .enumerate()
-                    .flat_map(|(y, row)| {
-                        row.into_iter()
-                            .enumerate()
-                            .map(move |(x, heat)| (Position(x as i64, y as i64), heat))
-                    })
-                    .collect();
+            |map| -> Result<Self> {
+                let max_x = (map.first().ok_or(GameError::NoKeys)?.len() - 1) as i64;
 
-                let max_x = *map
-                    .keys()
-                    .map(|Position(x, _)| x)
-                    .max()
-                    .ok_or(GameError::NoKeys)?;
-
-                let max_y = *map
-                    .keys()
-                    .map(|Position(_, y)| y)
-                    .max()
-                    .ok_or(GameError::NoKeys)?;
+                let max_y = map.len().checked_sub(1).ok_or(GameError::NoKeys)? as i64;
 
                 Ok(Self { map, max_x, max_y })
             },
@@ -115,7 +97,7 @@ impl Game {
             heat,
         })) = queue.pop()
         {
-            if !self.map.contains_key(&pos) {
+            if !self.is_position_valid(pos) {
                 continue;
             }
 
@@ -161,6 +143,14 @@ impl Game {
         self.puzzle(4, 10)
     }
 
+    fn is_position_valid(&self, pos: Position) -> bool {
+        if pos.0 < 0 || pos.0 > self.max_x || pos.1 < 0 || pos.1 > self.max_y {
+            false
+        } else {
+            true
+        }
+    }
+
     fn calculate_next_entry(
         &self,
         pos: Position,
@@ -179,12 +169,13 @@ impl Game {
 
         let next_pos = pos.move_dir(next_dir);
 
-        if let Some(next_tile_heat) = self.map.get(&next_pos) {
-            let next_heat = heat + next_tile_heat;
-            Some(Entry::new(next_pos, next_dir, next_steps, next_heat))
-        } else {
-            None
+        if !self.is_position_valid(next_pos) {
+            return None;
         }
+
+        let next_tile_heat = self.map[next_pos.1 as usize][next_pos.0 as usize];
+        let next_heat = heat + next_tile_heat;
+        Some(Entry::new(next_pos, next_dir, next_steps, next_heat))
     }
 }
 
