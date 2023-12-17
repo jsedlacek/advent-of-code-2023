@@ -1,5 +1,4 @@
 use std::{
-    cmp::Reverse,
     collections::{BinaryHeap, HashMap},
     fmt::Display,
     str::FromStr,
@@ -39,7 +38,7 @@ impl Game {
             separated_list1(
                 newline,
                 many1(map_res(one_of("0123456789"), |c| {
-                    c.to_string().parse::<u64>()
+                    c.to_digit(10).ok_or(anyhow!("Invalid digit character"))
                 })),
             ),
             |map| -> Result<Self> {
@@ -49,7 +48,7 @@ impl Game {
                     .flat_map(|(y, row)| {
                         row.into_iter()
                             .enumerate()
-                            .map(move |(x, heat)| (Position(x as i64, y as i64), heat))
+                            .map(move |(x, heat)| (Position(x as i64, y as i64), heat as u64))
                     })
                     .collect();
 
@@ -76,18 +75,18 @@ impl Game {
         let end_pos = Position(self.max_x, self.max_y);
 
         let mut queue = BinaryHeap::from([
-            Reverse(Entry::new(start_pos, Direction::Right, 0, 0)),
-            Reverse(Entry::new(start_pos, Direction::Down, 0, 0)),
+            Entry::new(start_pos, Direction::Right, 0, 0),
+            Entry::new(start_pos, Direction::Down, 0, 0),
         ]);
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
 
-        while let Some(Reverse(Entry {
+        while let Some(Entry {
             pos,
             dir,
             steps,
             heat,
-        })) = queue.pop()
+        }) = queue.pop()
         {
             if !self.map.contains_key(&pos) {
                 continue;
@@ -109,7 +108,7 @@ impl Game {
 
             if steps < max_steps {
                 if let Some(entry) = self.calculate_next_entry(pos, dir, heat, steps, None) {
-                    queue.push(Reverse(entry));
+                    queue.push(entry);
                 }
             }
 
@@ -118,7 +117,7 @@ impl Game {
                     if let Some(entry) =
                         self.calculate_next_entry(pos, dir, heat, steps, Some(turn))
                     {
-                        queue.push(Reverse(entry));
+                        queue.push(entry);
                     }
                 }
             }
@@ -163,7 +162,7 @@ impl Game {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Entry {
     pos: Position,
     dir: Direction,
@@ -195,6 +194,7 @@ impl Ord for Entry {
             .then_with(|| self.steps.cmp(&other.steps))
             .then_with(|| self.pos.cmp(&other.pos))
             .then_with(|| self.dir.cmp(&other.dir))
+            .reverse()
     }
 }
 
@@ -249,7 +249,7 @@ enum Turn {
 }
 
 fn main() -> Result<()> {
-    let game = include_str!("input.txt").parse::<Game>()?;
+    let game = Game::from_str(include_str!("input.txt"))?;
 
     println!("Part 1: {}", game.part1()?);
     println!("Part 2: {}", game.part2()?);
@@ -259,7 +259,7 @@ fn main() -> Result<()> {
 
 #[test]
 fn part1() -> Result<()> {
-    let game = include_str!("sample-input.txt").parse::<Game>()?;
+    let game = Game::from_str(include_str!("sample-input.txt"))?;
 
     assert_eq!(game.part1()?, 102);
 
@@ -268,7 +268,7 @@ fn part1() -> Result<()> {
 
 #[test]
 fn part2_1() -> Result<()> {
-    let game = include_str!("sample-input.txt").parse::<Game>()?;
+    let game = Game::from_str(include_str!("sample-input.txt"))?;
 
     assert_eq!(game.part2()?, 94);
 
@@ -277,7 +277,7 @@ fn part2_1() -> Result<()> {
 
 #[test]
 fn part2_2() -> Result<()> {
-    let game = include_str!("sample-input-2.txt").parse::<Game>()?;
+    let game = Game::from_str(include_str!("sample-input-2.txt"))?;
 
     assert_eq!(game.part2()?, 71);
 
@@ -288,12 +288,7 @@ fn part2_2() -> Result<()> {
 fn entry() {
     assert!(
         Entry::new(Position(0, 0), Direction::Up, 0, 1)
-            < Entry::new(Position(0, 0), Direction::Up, 0, 2)
-    );
-
-    assert!(
-        Reverse(Entry::new(Position(0, 0), Direction::Up, 0, 1))
-            > Reverse(Entry::new(Position(0, 0), Direction::Up, 0, 2))
+            > Entry::new(Position(0, 0), Direction::Up, 0, 2)
     );
 
     assert!(
