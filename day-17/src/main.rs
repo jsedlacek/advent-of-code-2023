@@ -1,9 +1,17 @@
 use std::{
     collections::{BTreeSet, HashMap},
     fmt::Display,
+    str::FromStr,
 };
 
 use anyhow::{anyhow, Result};
+use nom::{
+    character::complete::{newline, one_of},
+    combinator::{all_consuming, map_res},
+    multi::{many0, many1, separated_list1},
+    sequence::delimited,
+    IResult,
+};
 
 #[derive(Debug)]
 struct Game {
@@ -12,29 +20,53 @@ struct Game {
     max_y: i64,
 }
 
+impl FromStr for Game {
+    type Err = anyhow::Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let (_, game) =
+            all_consuming(delimited(many0(newline), Game::parse, many0(newline)))(input)
+                .map_err(|e| e.to_owned())?;
+
+        Ok(game)
+    }
+}
+
 impl Game {
-    fn parse(input: &str) -> Result<Self> {
-        let mut map = HashMap::new();
+    fn parse(input: &str) -> IResult<&str, Self> {
+        map_res(
+            separated_list1(
+                newline,
+                many1(map_res(one_of("0123456789"), |c| {
+                    c.to_string().parse::<u64>()
+                })),
+            ),
+            |rows| -> Result<Self> {
+                let map: HashMap<Position, u64> = rows
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(y, row)| {
+                        row.into_iter()
+                            .enumerate()
+                            .map(move |(x, heat)| (Position(x as i64, y as i64), heat))
+                    })
+                    .collect();
 
-        for (y, line) in input.lines().enumerate() {
-            for (x, c) in line.chars().enumerate() {
-                let value = c.to_digit(10).ok_or_else(|| anyhow!("Error parsing {c}"))? as u64;
-                map.insert(Position(x as i64, y as i64), value);
-            }
-        }
+                let max_x = *map
+                    .keys()
+                    .map(|Position(x, _)| x)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
 
-        let max_x = *map
-            .keys()
-            .map(|Position(x, _)| x)
-            .max()
-            .ok_or(anyhow!("No keys"))?;
-        let max_y = *map
-            .keys()
-            .map(|Position(_, y)| y)
-            .max()
-            .ok_or(anyhow!("No keys"))?;
+                let max_y = *map
+                    .keys()
+                    .map(|Position(_, y)| y)
+                    .max()
+                    .ok_or(anyhow!("No keys"))?;
 
-        Ok(Self { map, max_x, max_y })
+                Ok(Self { map, max_x, max_y })
+            },
+        )(input)
     }
 
     fn puzzle(&self, min_steps: u64, max_steps: u64) -> Result<u64> {
@@ -191,7 +223,7 @@ enum Turn {
 }
 
 fn main() -> Result<()> {
-    let game = Game::parse(include_str!("input.txt"))?;
+    let game = include_str!("input.txt").parse::<Game>()?;
 
     println!("Part 1: {}", game.part1()?);
     println!("Part 2: {}", game.part2()?);
@@ -201,7 +233,7 @@ fn main() -> Result<()> {
 
 #[test]
 fn part1() -> Result<()> {
-    let game = Game::parse(include_str!("sample-input.txt"))?;
+    let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part1()?, 102);
 
@@ -210,7 +242,7 @@ fn part1() -> Result<()> {
 
 #[test]
 fn part2_1() -> Result<()> {
-    let game = Game::parse(include_str!("sample-input.txt"))?;
+    let game = include_str!("sample-input.txt").parse::<Game>()?;
 
     assert_eq!(game.part2()?, 94);
 
@@ -219,7 +251,7 @@ fn part2_1() -> Result<()> {
 
 #[test]
 fn part2_2() -> Result<()> {
-    let game = Game::parse(include_str!("sample-input-2.txt"))?;
+    let game = include_str!("sample-input-2.txt").parse::<Game>()?;
 
     assert_eq!(game.part2()?, 71);
 
