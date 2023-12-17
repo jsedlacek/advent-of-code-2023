@@ -1,4 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::Display,
+};
 
 use anyhow::{anyhow, Result};
 
@@ -38,40 +41,47 @@ impl Game {
         let start_pos = Position(0, 0);
 
         let mut queue: VecDeque<(Position, Direction, u64, u64)> = VecDeque::from([
-            (start_pos.move_dir(Direction::Right), Direction::Right, 1, 0),
-            (start_pos.move_dir(Direction::Down), Direction::Down, 1, 0),
+            (start_pos, Direction::Right, 0, 0),
+            (start_pos, Direction::Down, 0, 0),
         ]);
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
 
-        while let Some((pos, dir, steps, prev_heat)) = queue.pop_front() {
-            if let Some(&tile_heat) = self.map.get(&pos) {
-                let heat = prev_heat + tile_heat;
+        while let Some((pos, dir, steps, heat)) = queue.pop_front() {
+            if !self.map.contains_key(&pos) {
+                continue;
+            }
 
-                if let Some(&existing_heat) = results.get(&(pos, dir, steps)) {
-                    if existing_heat <= heat {
-                        continue;
-                    }
+            if let Some(&existing_heat) = results.get(&(pos, dir, steps)) {
+                if existing_heat <= heat {
+                    continue;
                 }
+            }
 
-                if steps >= min_steps {
-                    results.insert((pos, dir, steps), heat);
+            if steps >= min_steps {
+                results.insert((pos, dir, steps), heat);
+            }
+
+            if steps < max_steps {
+                let next_pos = pos.move_dir(dir);
+                if let Some(next_tile_heat) = self.map.get(&next_pos) {
+                    queue.push_back((next_pos, dir, steps + 1, heat + next_tile_heat))
                 }
+            }
 
-                if steps < max_steps {
-                    queue.push_back((pos.move_dir(dir), dir, steps + 1, heat))
-                }
+            if steps >= min_steps {
+                for turn in [Turn::Left, Turn::Right] {
+                    let next_dir = dir.turn(turn);
 
-                if steps >= min_steps {
-                    for turn in [Turn::Left, Turn::Right] {
-                        let next_dir = dir.turn(turn);
-                        let next_pos = pos.move_dir(next_dir);
-
-                        queue.push_back((next_pos, next_dir, 1, heat));
+                    let next_pos = pos.move_dir(next_dir);
+                    if let Some(next_tile_heat) = self.map.get(&next_pos) {
+                        queue.push_back((next_pos, next_dir, 1, heat + next_tile_heat))
                     }
                 }
             }
         }
+
+        dbg!(results.len());
 
         let end_pos = Position(self.max_x, self.max_y);
 
@@ -104,6 +114,12 @@ impl Position {
             Direction::Left => Self(self.0 - 1, self.1),
             Direction::Up => Self(self.0, self.1 - 1),
         }
+    }
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.0, self.1)
     }
 }
 
