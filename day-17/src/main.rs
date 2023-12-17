@@ -22,7 +22,7 @@ enum GameError {
 impl Display for GameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let description = match self {
-            Self::Parse(_) => "parse error",
+            Self::Parse(_) => "parsing error",
             Self::NoKeys => "there are no keys in map",
             Self::EndUnreachable => "end point is unreachable",
         };
