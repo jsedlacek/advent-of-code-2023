@@ -215,8 +215,11 @@ impl PartialOrd for Entry {
 
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.heat, self.steps, self.pos, self.dir)
-            .cmp(&((other.heat, other.steps, other.pos, other.dir)))
+        self.heat
+            .cmp(&other.heat)
+            .then_with(|| self.steps.cmp(&other.steps))
+            .then_with(|| self.pos.cmp(&other.pos))
+            .then_with(|| self.dir.cmp(&other.dir))
     }
 }
 
