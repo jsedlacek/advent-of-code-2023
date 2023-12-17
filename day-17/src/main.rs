@@ -66,13 +66,6 @@ impl Game {
 
                     queue.push_back((next_pos, next_dir, 1, heat));
                 }
-
-                results
-                    .entry((pos, dir, steps))
-                    .and_modify(|existing_heat| {
-                        *existing_heat = (*existing_heat).min(heat);
-                    })
-                    .or_insert(heat);
             }
         }
 
