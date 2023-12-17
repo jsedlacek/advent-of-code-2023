@@ -44,16 +44,8 @@ impl Game {
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
 
-        let mut index = 0;
-
         while let Some((pos, dir, steps, prev_heat)) = queue.pop_front() {
             if let Some(&tile_heat) = self.map.get(&pos) {
-                index += 1;
-
-                if index == 100 {
-                    // break;
-                }
-
                 let heat = prev_heat + tile_heat;
 
                 if let Some(&existing_heat) = results.get(&(pos, dir, steps)) {
