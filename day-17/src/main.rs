@@ -107,23 +107,17 @@ impl Game {
             }
 
             if steps < max_steps {
-                let next_pos = pos.move_dir(dir);
-                if let Some(next_tile_heat) = self.map.get(&next_pos) {
-                    let next_steps = steps + 1;
-                    let next_heat = heat + next_tile_heat;
-                    queue.insert(Entry::new(next_pos, dir, next_steps, next_heat));
+                if let Some(entry) = self.calculate_next_entry(pos, dir, heat, steps, None) {
+                    queue.insert(entry);
                 }
             }
 
             if steps >= min_steps {
                 for turn in [Turn::Left, Turn::Right] {
-                    let next_dir = dir.turn(turn);
-
-                    let next_pos = pos.move_dir(next_dir);
-                    if let Some(next_tile_heat) = self.map.get(&next_pos) {
-                        let next_steps = 1;
-                        let next_heat = heat + next_tile_heat;
-                        queue.insert(Entry::new(next_pos, next_dir, next_steps, next_heat));
+                    if let Some(entry) =
+                        self.calculate_next_entry(pos, dir, heat, steps, Some(turn))
+                    {
+                        queue.insert(entry);
                     }
                 }
             }
@@ -138,6 +132,31 @@ impl Game {
 
     fn part2(&self) -> Result<u64> {
         self.puzzle(4, 10)
+    }
+
+    fn calculate_next_entry(
+        &self,
+        pos: Position,
+        dir: Direction,
+        heat: u64,
+        steps: u64,
+        turn: Option<Turn>,
+    ) -> Option<Entry> {
+        let mut next_dir = dir;
+        if let Some(turn) = turn {
+            next_dir = dir.turn(turn);
+        }
+
+        let next_steps = if turn.is_some() { 1 } else { steps + 1 };
+
+        let next_pos = pos.move_dir(next_dir);
+
+        if let Some(next_tile_heat) = self.map.get(&next_pos) {
+            let next_heat = heat + next_tile_heat;
+            Some(Entry::new(next_pos, next_dir, next_steps, next_heat))
+        } else {
+            None
+        }
     }
 }
 
@@ -217,6 +236,7 @@ impl Direction {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 enum Turn {
     Left,
     Right,
