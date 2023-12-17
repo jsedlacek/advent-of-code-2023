@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{BTreeSet, HashMap},
     fmt::Display,
 };
 
@@ -40,19 +40,21 @@ impl Game {
     fn puzzle(&self, min_steps: u64, max_steps: u64) -> Result<u64> {
         let start_pos = Position(0, 0);
 
-        let mut queue: VecDeque<Entry> = VecDeque::from([
+        let mut queue = BTreeSet::from([
             Entry::new(start_pos, Direction::Right, 0, 0),
             Entry::new(start_pos, Direction::Down, 0, 0),
         ]);
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
 
+        let end_pos = Position(self.max_x, self.max_y);
+
         while let Some(Entry {
             pos,
             dir,
             steps,
             heat,
-        }) = queue.pop_front()
+        }) = queue.pop_first()
         {
             if !self.map.contains_key(&pos) {
                 continue;
@@ -65,13 +67,19 @@ impl Game {
             }
 
             if steps >= min_steps {
+                if pos == end_pos {
+                    return Ok(heat);
+                }
+
                 results.insert((pos, dir, steps), heat);
             }
 
             if steps < max_steps {
                 let next_pos = pos.move_dir(dir);
                 if let Some(next_tile_heat) = self.map.get(&next_pos) {
-                    queue.push_back(Entry::new(next_pos, dir, steps + 1, heat + next_tile_heat))
+                    let next_steps = steps + 1;
+                    let next_heat = heat + next_tile_heat;
+                    queue.insert(Entry::new(next_pos, dir, next_steps, next_heat));
                 }
             }
 
@@ -81,15 +89,15 @@ impl Game {
 
                     let next_pos = pos.move_dir(next_dir);
                     if let Some(next_tile_heat) = self.map.get(&next_pos) {
-                        queue.push_back(Entry::new(next_pos, next_dir, 1, heat + next_tile_heat))
+                        let next_steps = 1;
+                        let next_heat = heat + next_tile_heat;
+                        queue.insert(Entry::new(next_pos, next_dir, next_steps, next_heat));
                     }
                 }
             }
         }
 
         dbg!(results.len());
-
-        let end_pos = Position(self.max_x, self.max_y);
 
         let total_heat = results
             .iter()
@@ -136,11 +144,12 @@ impl PartialOrd for Entry {
 
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.heat.cmp(&(other.heat))
+        (self.heat, self.steps, self.pos, self.dir)
+            .cmp(&((other.heat, other.steps, other.pos, other.dir)))
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Position(i64, i64);
 
 impl Position {
@@ -160,7 +169,7 @@ impl Display for Position {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 enum Direction {
     Left,
     Down,
@@ -223,4 +232,23 @@ fn part2_2() -> Result<()> {
     assert_eq!(game.part2()?, 71);
 
     Ok(())
+}
+
+#[test]
+fn entry() {
+    let tree = BTreeSet::from([
+        Entry::new(Position(0, 0), Direction::Up, 0, 1),
+        Entry::new(Position(0, 0), Direction::Up, 0, 2),
+        Entry::new(Position(0, 0), Direction::Up, 0, 0),
+    ]);
+
+    assert_eq!(
+        tree.first(),
+        Some(&Entry::new(Position(0, 0), Direction::Up, 0, 0))
+    );
+
+    assert_eq!(
+        tree.last(),
+        Some(&Entry::new(Position(0, 0), Direction::Up, 0, 2))
+    );
 }
