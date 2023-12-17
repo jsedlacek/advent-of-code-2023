@@ -34,7 +34,7 @@ impl Game {
         Ok(Self { map, max_x, max_y })
     }
 
-    fn part1(&self) -> Result<u64> {
+    fn puzzle(&self, min_steps: u64, max_steps: u64) -> Result<u64> {
         let start_pos = Position(0, 0);
 
         let mut queue: VecDeque<(Position, Direction, u64, u64)> = VecDeque::from([
@@ -44,8 +44,16 @@ impl Game {
 
         let mut results: HashMap<(Position, Direction, u64), u64> = HashMap::new();
 
+        let mut index = 0;
+
         while let Some((pos, dir, steps, prev_heat)) = queue.pop_front() {
             if let Some(&tile_heat) = self.map.get(&pos) {
+                index += 1;
+
+                if index == 100 {
+                    // break;
+                }
+
                 let heat = prev_heat + tile_heat;
 
                 if let Some(&existing_heat) = results.get(&(pos, dir, steps)) {
@@ -54,17 +62,21 @@ impl Game {
                     }
                 }
 
-                results.insert((pos, dir, steps), heat);
+                if steps >= min_steps {
+                    results.insert((pos, dir, steps), heat);
+                }
 
-                if steps < 3 {
+                if steps < max_steps {
                     queue.push_back((pos.move_dir(dir), dir, steps + 1, heat))
                 }
 
-                for turn in [Turn::Left, Turn::Right] {
-                    let next_dir = dir.turn(turn);
-                    let next_pos = pos.move_dir(next_dir);
+                if steps >= min_steps {
+                    for turn in [Turn::Left, Turn::Right] {
+                        let next_dir = dir.turn(turn);
+                        let next_pos = pos.move_dir(next_dir);
 
-                    queue.push_back((next_pos, next_dir, 1, heat));
+                        queue.push_back((next_pos, next_dir, 1, heat));
+                    }
                 }
             }
         }
@@ -78,6 +90,14 @@ impl Game {
             .ok_or(anyhow!("End unreachable"))?;
 
         Ok(total_heat)
+    }
+
+    fn part1(&self) -> Result<u64> {
+        self.puzzle(0, 3)
+    }
+
+    fn part2(&self) -> Result<u64> {
+        self.puzzle(4, 10)
     }
 }
 
@@ -128,6 +148,34 @@ fn main() -> Result<()> {
     let game = Game::parse(include_str!("input.txt"))?;
 
     println!("Part 1: {}", game.part1()?);
+    println!("Part 2: {}", game.part2()?);
+
+    Ok(())
+}
+
+#[test]
+fn part1() -> Result<()> {
+    let game = Game::parse(include_str!("sample-input.txt"))?;
+
+    assert_eq!(game.part1()?, 102);
+
+    Ok(())
+}
+
+#[test]
+fn part2_1() -> Result<()> {
+    let game = Game::parse(include_str!("sample-input.txt"))?;
+
+    assert_eq!(game.part2()?, 94);
+
+    Ok(())
+}
+
+#[test]
+fn part2_2() -> Result<()> {
+    let game = Game::parse(include_str!("sample-input-2.txt"))?;
+
+    assert_eq!(game.part2()?, 71);
 
     Ok(())
 }
