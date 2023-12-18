@@ -70,7 +70,6 @@ fn parse_direction_v2(input: &str) -> IResult<&str, Direction> {
 
 #[cfg(test)]
 mod tests {
-
     use crate::game::{Direction, Instruction};
 
     use super::{
