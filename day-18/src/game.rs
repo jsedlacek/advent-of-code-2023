@@ -46,12 +46,6 @@ impl Instruction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Position(i64, i64);
 
-impl Display for Position {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.0, self.1)
-    }
-}
-
 impl Position {
     fn move_dir(&self, dir: Direction, count: i64) -> Self {
         match dir {
@@ -60,6 +54,12 @@ impl Position {
             Direction::Left => Self(self.0 - count, self.1),
             Direction::Up => Self(self.0, self.1 - count),
         }
+    }
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.0, self.1)
     }
 }
 
@@ -78,20 +78,16 @@ mod tests {
     const SAMPLE_INPUT: &str = include_str!("sample-input.txt");
 
     #[test]
-    fn part1() -> anyhow::Result<()> {
-        let (_, game) = parse_game_v1(SAMPLE_INPUT)?;
+    fn part1() {
+        let (_, game) = parse_game_v1(SAMPLE_INPUT).unwrap();
 
         assert_eq!(game.puzzle(), 62);
-
-        Ok(())
     }
 
     #[test]
-    fn part2() -> anyhow::Result<()> {
-        let (_, game) = parse_game_v2(SAMPLE_INPUT)?;
+    fn part2() {
+        let (_, game) = parse_game_v2(SAMPLE_INPUT).unwrap();
 
         assert_eq!(game.puzzle(), 952408144115);
-
-        Ok(())
     }
 }

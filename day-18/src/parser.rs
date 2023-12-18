@@ -70,7 +70,6 @@ fn parse_direction_v2(input: &str) -> IResult<&str, Direction> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
 
     use crate::game::{Direction, Instruction};
 
@@ -80,52 +79,40 @@ mod tests {
     };
 
     #[test]
-    fn test_parse_game_v1() -> Result<()> {
-        parse_game_v1("R 6 (#70c710)")?;
-
-        Ok(())
+    fn test_parse_game_v1() {
+        assert!(parse_game_v1("R 6 (#70c710)").is_ok());
     }
 
     #[test]
-    fn test_parse_game_v2() -> Result<()> {
-        parse_game_v2("R 6 (#70c710)")?;
-
-        Ok(())
+    fn test_parse_game_v2() {
+        assert!(parse_game_v2("R 6 (#70c710)").is_ok());
     }
 
     #[test]
-    fn test_parse_instruction_v1() -> Result<()> {
+    fn test_parse_instruction_v1() {
         assert_eq!(
-            parse_instruction_v1("R 6 (#70c710)")?.1,
+            parse_instruction_v1("R 6 (#70c710)").unwrap().1,
             Instruction::new(Direction::Right, 6)
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_parse_instruction_v2() -> Result<()> {
+    fn test_parse_instruction_v2() {
         assert_eq!(
-            parse_instruction_v2("R 6 (#70c710)")?.1,
+            parse_instruction_v2("R 6 (#70c710)").unwrap().1,
             Instruction::new(Direction::Right, 461937,)
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_parse_direction_v1() -> Result<()> {
-        assert_eq!(parse_direction_v1("R")?.1, Direction::Right);
-
-        Ok(())
+    fn test_parse_direction_v1() {
+        assert_eq!(parse_direction_v1("R").unwrap().1, Direction::Right);
     }
 
     #[test]
-    fn test_parse_direction_v2() -> Result<()> {
-        assert_eq!(parse_direction_v2("0")?.1, Direction::Right);
+    fn test_parse_direction_v2() {
+        assert_eq!(parse_direction_v2("0").unwrap().1, Direction::Right);
 
         assert!(parse_direction_v2("5").is_err());
-
-        Ok(())
     }
 }
