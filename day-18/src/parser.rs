@@ -111,6 +111,7 @@ mod tests {
     #[test]
     fn test_parse_direction_v2() {
         assert_eq!(parse_direction_v2("0").unwrap().1, Direction::Right);
+        assert_eq!(parse_direction_v2("1").unwrap().1, Direction::Down);
 
         assert!(parse_direction_v2("5").is_err());
     }
