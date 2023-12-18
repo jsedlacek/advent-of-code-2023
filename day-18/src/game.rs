@@ -13,21 +13,21 @@ impl Game {
     pub fn puzzle(&self) -> u64 {
         let mut pos = Position(0, 0);
 
-        let mut space = 0;
+        let mut area = 0;
 
         let mut last_y = 0;
 
         for ins in self.instructions.iter() {
             pos = pos.move_dir(ins.dir, ins.steps as i64);
 
-            space += pos.0 * (pos.1 - last_y);
+            area += pos.0 * (pos.1 - last_y);
 
             last_y = pos.1;
         }
 
         let total_steps = self.instructions.iter().map(|i| i.steps).sum::<u64>();
 
-        space as u64 + (total_steps / 2) + 1
+        area as u64 + (total_steps / 2) + 1
     }
 }
 
