@@ -1,18 +1,21 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    str::FromStr,
-};
+use std::fmt::Display;
 
 use anyhow::Result;
 use nom::{
     branch::alt,
-    bytes::complete::tag,
+    bytes::complete::{tag, take},
     character::complete::{alphanumeric1, newline, space1, u64},
-    combinator::{all_consuming, map, value},
-    multi::{many0, separated_list1},
-    sequence::{delimited, preceded, tuple},
+    combinator::{map, map_res, value},
+    multi::separated_list1,
+    sequence::tuple,
     IResult,
 };
+
+#[derive(Debug, PartialEq, Eq)]
+enum GameVersion {
+    V1,
+    V2,
+}
 
 #[derive(Debug)]
 struct Game {
@@ -20,138 +23,51 @@ struct Game {
 }
 
 impl Game {
-    fn parse(input: &str) -> IResult<&str, Self> {
-        map(
-            separated_list1(newline, Instruction::parse),
-            |instructions| Self { instructions },
-        )(input)
+    fn parse(version: GameVersion) -> impl FnOnce(&str) -> IResult<&str, Self> {
+        move |input: &str| {
+            map(
+                separated_list1(
+                    newline,
+                    if version == GameVersion::V1 {
+                        Instruction::parse_v1
+                    } else {
+                        Instruction::parse_v2
+                    },
+                ),
+                |instructions| Self { instructions },
+            )(input)
+        }
     }
 
-    fn find_range(map: &HashSet<Position>) -> ((i64, i64), (i64, i64)) {
-        let x = map.iter().map(|Position(x, _)| x);
-        let y = map.iter().map(|Position(_, y)| y);
-
-        (
-            (*x.clone().min().unwrap(), *x.max().unwrap()),
-            (*y.clone().min().unwrap(), *y.max().unwrap()),
-        )
-    }
-
-    fn find_wall(&self) -> HashSet<Position> {
-        let mut wall = HashSet::new();
-
+    fn puzzle(&self) -> u64 {
         let mut pos = Position(0, 0);
 
-        wall.insert(pos);
+        let mut space = 0;
+
+        let mut last_y = 0;
 
         for ins in self.instructions.iter() {
-            for _ in 0..ins.steps {
-                pos = pos.move_dir(ins.dir);
-                wall.insert(pos);
-            }
+            pos = pos.move_dir(ins.dir, ins.steps as i64);
+
+            space += pos.0 * (pos.1 - last_y);
+
+            last_y = pos.1;
         }
 
-        wall
-    }
+        let total_steps = self.instructions.iter().map(|i| i.steps).sum::<u64>();
 
-    fn find_outside(&self, wall: &HashSet<Position>) -> HashSet<Position> {
-        let ((min_x, max_x), (min_y, max_y)) = Self::find_range(&wall);
-
-        let starting_point = Position(min_x - 1, min_y - 1);
-
-        let (range_x, range_y) = ((min_x - 1)..=(max_x + 1), (min_y - 1)..=(max_y + 1));
-
-        let mut queue = VecDeque::from([starting_point]);
-
-        let mut outside = HashSet::new();
-
-        while let Some(pos) = queue.pop_front() {
-            if outside.contains(&pos) {
-                continue;
-            }
-
-            outside.insert(pos);
-
-            for dir in [
-                Direction::Left,
-                Direction::Down,
-                Direction::Right,
-                Direction::Up,
-            ] {
-                let next_pos = pos.move_dir(dir);
-
-                if range_x.contains(&next_pos.0)
-                    && range_y.contains(&next_pos.1)
-                    && !outside.contains(&next_pos)
-                    && !wall.contains(&next_pos)
-                {
-                    queue.push_back(next_pos);
-                }
-            }
-        }
-
-        outside
-    }
-
-    fn print_map(map: &HashSet<Position>) {
-        let ((min_x, max_x), (min_y, max_y)) = Self::find_range(&map);
-
-        for y in min_y..=max_y {
-            for x in min_x..=max_x {
-                print!(
-                    "{}",
-                    if map.contains(&Position(x, y)) {
-                        "#"
-                    } else {
-                        " "
-                    }
-                );
-            }
-            println!();
-        }
-    }
-
-    fn part1(&self) -> u64 {
-        let wall = self.find_wall();
-
-        let outside = self.find_outside(&wall);
-
-        let ((min_x, max_x), (min_y, max_y)) = Self::find_range(&wall);
-
-        let mut inside = HashSet::new();
-
-        for x in min_x..=max_x {
-            for y in min_y..=max_y {
-                if !outside.contains(&Position(x, y)) {
-                    inside.insert(Position(x, y));
-                }
-            }
-        }
-
-        inside.len() as u64
+        space as u64 + (total_steps / 2) + 1
     }
 }
 
-impl FromStr for Game {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (_, game) = all_consuming(delimited(many0(newline), Game::parse, many0(newline)))(s)
-            .map_err(|e| e.to_owned())?;
-
-        Ok(game)
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Instruction {
     dir: Direction,
     steps: u64,
-    color: Color,
 }
 
 impl Instruction {
-    fn parse(input: &str) -> IResult<&str, Self> {
+    fn parse_v1(input: &str) -> IResult<&str, Self> {
         // Example: "R 6 (#70c710)"
 
         map(
@@ -160,11 +76,34 @@ impl Instruction {
                 space1,
                 u64,
                 space1,
-                tag("("),
-                Color::parse,
+                tag("(#"),
+                alphanumeric1,
                 tag(")"),
             )),
-            |(dir, _, steps, _, _, color, _)| Self { dir, steps, color },
+            |(dir, _, steps, _, _, _, _)| Self { dir, steps },
+        )(input)
+    }
+
+    fn parse_v2(input: &str) -> IResult<&str, Self> {
+        // Example: "R 6 (#70c710)"
+
+        map(
+            tuple((
+                Direction::parse,
+                space1,
+                u64,
+                space1,
+                tag("(#"),
+                map(
+                    tuple((
+                        map_res(take(5u8), |s| u64::from_str_radix(s, 16)),
+                        Direction::parse_v2,
+                    )),
+                    |(steps, dir)| Self { dir, steps },
+                ),
+                tag(")"),
+            )),
+            |(_, _, _, _, _, ins, _)| ins,
         )(input)
     }
 }
@@ -172,18 +111,24 @@ impl Instruction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Position(i64, i64);
 
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.0, self.1)
+    }
+}
+
 impl Position {
-    fn move_dir(&self, dir: Direction) -> Self {
+    fn move_dir(&self, dir: Direction, count: i64) -> Self {
         match dir {
-            Direction::Right => Self(self.0 + 1, self.1),
-            Direction::Down => Self(self.0, self.1 + 1),
-            Direction::Left => Self(self.0 - 1, self.1),
-            Direction::Up => Self(self.0, self.1 - 1),
+            Direction::Right => Self(self.0 + count, self.1),
+            Direction::Down => Self(self.0, self.1 + count),
+            Direction::Left => Self(self.0 - count, self.1),
+            Direction::Up => Self(self.0, self.1 - count),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Direction {
     Right,
     Down,
@@ -200,33 +145,73 @@ impl Direction {
             value(Self::Up, tag("U")),
         ))(input)
     }
-}
 
-#[derive(Debug, Clone)]
-struct Color(String);
-
-impl Color {
-    fn parse(input: &str) -> IResult<&str, Self> {
-        // Example: "#70c710"
-        map(preceded(tag("#"), alphanumeric1), |c: &str| {
-            Self(c.to_string())
-        })(input)
+    fn parse_v2(input: &str) -> IResult<&str, Self> {
+        alt((
+            value(Self::Right, tag("0")),
+            value(Self::Down, tag("1")),
+            value(Self::Left, tag("2")),
+            value(Self::Up, tag("3")),
+        ))(input)
     }
 }
 
 fn main() -> Result<()> {
-    let game = Game::from_str(include_str!("input.txt"))?;
+    let (_, game1) = Game::parse(GameVersion::V1)(include_str!("input.txt"))?;
 
-    println!("Part 1: {}", game.part1());
+    println!("Part 1: {}", game1.puzzle());
+
+    let (_, game2) = Game::parse(GameVersion::V2)(include_str!("input.txt"))?;
+
+    println!("Part 2: {}", game2.puzzle());
 
     Ok(())
 }
 
 #[test]
 fn part1() -> Result<()> {
-    let game = Game::from_str(include_str!("sample-input.txt"))?;
+    let (_, game) = Game::parse(GameVersion::V1)(include_str!("sample-input.txt"))?;
 
-    assert_eq!(game.part1(), 62);
+    assert_eq!(game.puzzle(), 62);
+
+    Ok(())
+}
+
+#[test]
+fn part2() -> Result<()> {
+    let (_, game) = Game::parse(GameVersion::V2)(include_str!("sample-input.txt"))?;
+
+    assert_eq!(game.puzzle(), 952408144115);
+
+    Ok(())
+}
+
+#[test]
+fn parse1() -> Result<()> {
+    let (_, instruction) = Instruction::parse_v1("R 6 (#70c710)")?;
+
+    assert_eq!(
+        instruction,
+        Instruction {
+            dir: Direction::Right,
+            steps: 6,
+        }
+    );
+
+    Ok(())
+}
+
+#[test]
+fn parse2() -> Result<()> {
+    let (_, instruction) = Instruction::parse_v2("R 6 (#70c710)")?;
+
+    assert_eq!(
+        instruction,
+        Instruction {
+            dir: Direction::Right,
+            steps: 461937,
+        }
+    );
 
     Ok(())
 }
