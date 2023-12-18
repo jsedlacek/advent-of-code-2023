@@ -34,7 +34,7 @@ pub fn parse_instruction_v1(input: &str) -> IResult<&str, Instruction> {
 pub fn parse_instruction_v2(input: &str) -> IResult<&str, Instruction> {
     // Example: "R 6 (#70c710)"
     // Take instructions from the #70c710 code
-    // - "70c71" is converted as hex into steps
+    // - "70c71" is converted as hex into "steps" value
     // - "0" indicates direction
 
     delimited(
