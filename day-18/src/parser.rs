@@ -39,21 +39,19 @@ pub mod v1 {
 
     #[cfg(test)]
     mod tests {
-        use crate::game::{Direction, Instruction};
-
-        use super::{parse_direction, parse_game, parse_instruction};
+        use super::*;
 
         #[test]
         fn test_parse_game() {
-            assert!(parse_game("R 6 (#70c710)").is_ok());
+            let (_, game) = parse_game("R 6 (#70c710)").unwrap();
+            assert_eq!(game.instructions.len(), 1);
         }
 
         #[test]
         fn test_parse_instruction() {
-            assert_eq!(
-                parse_instruction("R 6 (#70c710)").unwrap().1,
-                Instruction::new(Direction::Right, 6)
-            );
+            let (remaining, instruction) = parse_instruction("R 6 (#70c710)").unwrap();
+            assert_eq!(instruction, Instruction::new(Direction::Right, 6));
+            assert!(remaining.is_empty());
         }
 
         #[test]
@@ -110,28 +108,25 @@ pub mod v2 {
 
     #[cfg(test)]
     mod tests {
-        use crate::game::{Direction, Instruction};
-
-        use super::{parse_direction, parse_game, parse_instruction};
+        use super::*;
 
         #[test]
-        fn test_parse_game_v2() {
-            assert!(parse_game("R 6 (#70c710)").is_ok());
+        fn test_parse_game() {
+            let (_, game) = parse_game("R 6 (#70c710)").unwrap();
+            assert_eq!(game.instructions.len(), 1);
         }
 
         #[test]
-        fn test_parse_instruction_v2() {
-            assert_eq!(
-                parse_instruction("R 6 (#70c710)").unwrap().1,
-                Instruction::new(Direction::Right, 461937,)
-            );
+        fn test_parse_instruction() {
+            let (remaining, instruction) = parse_instruction("R 6 (#70c710)").unwrap();
+            assert_eq!(instruction, Instruction::new(Direction::Right, 461937));
+            assert!(remaining.is_empty());
         }
 
         #[test]
-        fn test_parse_direction_v2() {
+        fn test_parse_direction() {
             assert_eq!(parse_direction("0").unwrap().1, Direction::Right);
             assert_eq!(parse_direction("1").unwrap().1, Direction::Down);
-
             assert!(parse_direction("5").is_err());
         }
     }
