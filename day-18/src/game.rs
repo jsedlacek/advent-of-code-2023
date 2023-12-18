@@ -73,20 +73,20 @@ pub enum Direction {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse_game_v1, parse_game_v2};
+    use crate::parser;
 
     const SAMPLE_INPUT: &str = include_str!("sample-input.txt");
 
     #[test]
     fn part1() {
-        let (_, game) = parse_game_v1(SAMPLE_INPUT).unwrap();
+        let (_, game) = parser::v1::parse_game(SAMPLE_INPUT).unwrap();
 
         assert_eq!(game.puzzle(), 62);
     }
 
     #[test]
     fn part2() {
-        let (_, game) = parse_game_v2(SAMPLE_INPUT).unwrap();
+        let (_, game) = parser::v2::parse_game(SAMPLE_INPUT).unwrap();
 
         assert_eq!(game.puzzle(), 952408144115);
     }
