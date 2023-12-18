@@ -12,7 +12,7 @@ fn main() -> Result<()> {
 
     println!("Part 1: {}", game1.puzzle());
 
-    let (_, game2) = parse_game_v2(include_str!("input.txt"))?;
+    let (_, game2) = parse_game_v2(INPUT)?;
 
     println!("Part 2: {}", game2.puzzle());
 
