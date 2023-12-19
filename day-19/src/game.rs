@@ -46,7 +46,7 @@ impl Game {
     }
 
     fn ops_combination_count(&self, ops: &[Operation], prev_conds: &[Condition]) -> Result<u64> {
-        Ok(if let [op, rest_ops @ ..] = ops {
+        ops.split_first().map_or(Ok(0), |(op, rest_ops)| {
             let mut rest_conds = prev_conds.to_vec();
             let mut conds = rest_conds.to_vec();
 
@@ -55,10 +55,8 @@ impl Game {
                 rest_conds.push(cond.inverse());
             }
 
-            self.action_combination_count(&op.action, &conds)?
-                + self.ops_combination_count(rest_ops, &rest_conds)?
-        } else {
-            0
+            Ok(self.action_combination_count(&op.action, &conds)?
+                + self.ops_combination_count(rest_ops, &rest_conds)?)
         })
     }
 }
