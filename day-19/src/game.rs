@@ -125,23 +125,20 @@ impl Condition {
         }
     }
 
-    fn combination_count(ops: &[Self]) -> u64 {
+    fn combination_count(conds: &[Self]) -> u64 {
         CATEGORIES
             .iter()
-            .map(|k| {
-                let mut min = 1;
-                let mut max = 4000;
-
-                for op in ops.iter().filter(|o| &o.var == k) {
-                    match op.sign {
-                        Sign::Greater => min = min.max(op.value + 1),
-                        Sign::Less => max = max.min(op.value - 1),
-                        Sign::GreaterEq => min = min.max(op.value),
-                        Sign::LessEq => max = max.min(op.value),
-                    };
+            .map(|&category| {
+                let (mut min, mut max) = (1, 4000);
+                for cond in conds.iter().filter(|cond| cond.var == category) {
+                    match cond.sign {
+                        Sign::Greater => min = min.max(cond.value + 1),
+                        Sign::Less => max = max.min(cond.value - 1),
+                        Sign::GreaterEq => min = min.max(cond.value),
+                        Sign::LessEq => max = max.min(cond.value),
+                    }
                 }
-
-                if max >= min {
+                if min <= max {
                     max - min + 1
                 } else {
                     0
