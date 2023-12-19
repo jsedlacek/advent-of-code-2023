@@ -123,9 +123,7 @@ impl Condition {
                 let mut min = 1;
                 let mut max = 4000;
 
-                let key_ops = ops.iter().filter(|o| &o.var == k).collect::<Vec<_>>();
-
-                for op in &key_ops {
+                for op in ops.iter().filter(|o| &o.var == k) {
                     match op.sign {
                         Sign::Greater => min = min.max(op.value + 1),
                         Sign::Less => max = max.min(op.value - 1),
