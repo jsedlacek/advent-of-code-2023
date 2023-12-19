@@ -38,7 +38,7 @@ impl Game {
                 let workflow = self
                     .workflows
                     .get(w)
-                    .ok_or(anyhow!("Workflow \"{}\" not found", w))?;
+                    .ok_or(anyhow!("Workflow not found: {w}"))?;
 
                 self.ops_combination_count(&workflow.ops, conds)?
             }
