@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, newline, u64},
     combinator::{map, value},
-    multi::{many1, separated_list1},
+    multi::{many0, many1, separated_list1},
     sequence::{delimited, separated_pair, tuple},
     IResult,
 };
@@ -11,29 +11,19 @@ use nom::{
 use crate::game::{Action, Condition, Game, Operation, Rating, Sign, Workflow};
 
 pub fn parse_game(input: &str) -> IResult<&str, Game> {
-    map(
-        separated_pair(
-            separated_list1(newline, parse_workflow),
-            many1(newline),
-            separated_list1(
-                newline,
-                delimited(tag("{"), separated_list1(tag(","), parse_rating), tag("}")),
+    delimited(
+        many0(newline),
+        map(
+            separated_pair(
+                map(separated_list1(newline, parse_workflow), |workflows| {
+                    workflows.into_iter().map(|w| (w.name.clone(), w)).collect()
+                }),
+                many1(newline),
+                separated_list1(newline, parse_rating),
             ),
+            |(workflows, ratings)| Game { workflows, ratings },
         ),
-        |(workflows, ratings)| {
-            let workflows = workflows.into_iter().map(|w| (w.name.clone(), w)).collect();
-            let ratings = ratings
-                .into_iter()
-                .map(|r| {
-                    Rating(
-                        r.into_iter()
-                            .map(|(name, value)| (name.to_string(), value))
-                            .collect(),
-                    )
-                })
-                .collect();
-            Game { workflows, ratings }
-        },
+        many0(newline),
     )(input)
 }
 
@@ -95,15 +85,39 @@ fn parse_condition(input: &str) -> IResult<&str, Condition> {
     )(input)
 }
 
-fn parse_rating(input: &str) -> IResult<&str, (&str, u64)> {
-    // Example: "s=2876"
+fn parse_rating(input: &str) -> IResult<&str, Rating> {
+    // Example: "{x=787,m=2655,a=1222,s=2876}"
 
-    separated_pair(alpha1::<&str, _>, tag("="), u64)(input)
+    delimited(
+        tag("{"),
+        map(
+            separated_list1(tag(","), separated_pair(alpha1::<&str, _>, tag("="), u64)),
+            |r| {
+                Rating(
+                    r.into_iter()
+                        .map(|(name, value)| (name.to_string(), value))
+                        .collect(),
+                )
+            },
+        ),
+        tag("}"),
+    )(input)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SAMPLE_INPUT: &str = include_str!("sample-input.txt");
+
+    #[test]
+    fn test_parse_game() {
+        let (remainder, game) = parse_game(SAMPLE_INPUT).unwrap();
+
+        assert!(remainder.is_empty());
+        assert_eq!(game.workflows.len(), 11);
+        assert_eq!(game.ratings.len(), 5);
+    }
 
     #[test]
     fn test_parse_workflow() {
