@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use anyhow::{anyhow, Result};
+
 const CATEGORIES: [&str; 4] = ["x", "m", "a", "s"];
 
 #[derive(Debug, Clone)]
@@ -9,33 +11,42 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn part1(&self) -> u64 {
-        self.ratings
-            .iter()
-            .filter(|r| r.eval(&self.workflows) == Action::Accept)
-            .map(|r| r.value())
-            .sum::<u64>()
+    pub fn part1(&self) -> Result<u64> {
+        self.ratings.iter().try_fold(0, |sum, rating| {
+            Ok(if rating.eval(&self.workflows)? == Action::Accept {
+                sum + rating.value()
+            } else {
+                sum
+            })
+        })
     }
 
-    pub fn part2(&self) -> u64 {
-        let workflow = self.workflows.get("in").unwrap();
+    pub fn part2(&self) -> Result<u64> {
+        let workflow = self
+            .workflows
+            .get("in")
+            .ok_or(anyhow!("Workflow not found: in"))?;
 
         self.ops_combination_count(&workflow.ops, &[])
     }
 
-    fn action_combination_count(&self, action: &Action, conds: &[Condition]) -> u64 {
-        match action {
-            Action::Accept => Condition::combination_count(&conds),
+    fn action_combination_count(&self, action: &Action, conds: &[Condition]) -> Result<u64> {
+        Ok(match action {
+            Action::Accept => Condition::combination_count(conds),
             Action::Reject => 0,
             Action::Workflow(ref w) => {
-                let workflow = self.workflows.get(w).unwrap();
-                self.ops_combination_count(&workflow.ops, &conds)
+                let workflow = self
+                    .workflows
+                    .get(w)
+                    .ok_or(anyhow!("Workflow \"{}\" not found", w))?;
+
+                self.ops_combination_count(&workflow.ops, conds)?
             }
-        }
+        })
     }
 
-    fn ops_combination_count(&self, ops: &[Operation], prev_conds: &[Condition]) -> u64 {
-        if let [op, rest_ops @ ..] = ops {
+    fn ops_combination_count(&self, ops: &[Operation], prev_conds: &[Condition]) -> Result<u64> {
+        Ok(if let [op, rest_ops @ ..] = ops {
             let mut rest_conds = prev_conds.to_vec();
             let mut conds = rest_conds.to_vec();
 
@@ -44,11 +55,11 @@ impl Game {
                 rest_conds.push(cond.inverse());
             }
 
-            self.action_combination_count(&op.action, &conds)
-                + self.ops_combination_count(&rest_ops, &rest_conds)
+            self.action_combination_count(&op.action, &conds)?
+                + self.ops_combination_count(rest_ops, &rest_conds)?
         } else {
             0
-        }
+        })
     }
 }
 
@@ -161,15 +172,20 @@ pub enum Action {
 pub struct Rating(pub HashMap<String, u64>);
 
 impl Rating {
-    fn eval(&self, workflows: &HashMap<String, Workflow>) -> Action {
+    fn eval(&self, workflows: &HashMap<String, Workflow>) -> Result<Action> {
         let mut action = Action::Workflow("in".to_string());
 
         while let Action::Workflow(workflow) = action {
-            let workflow = workflows.get(&workflow).unwrap();
-            action = workflow.eval(self).unwrap();
+            let workflow = workflows
+                .get(&workflow)
+                .ok_or(anyhow!("Workflow not found: {workflow}"))?;
+
+            action = workflow
+                .eval(self)
+                .ok_or(anyhow!("Eval did not find any result"))?;
         }
 
-        action
+        Ok(action)
     }
 
     fn var_value(&self, var: &str) -> u64 {
@@ -193,14 +209,14 @@ mod tests {
     fn test_part1() {
         let game = parse_game(SAMPLE_INPUT).unwrap().1;
 
-        assert_eq!(game.part1(), 19114);
+        assert_eq!(game.part1().unwrap(), 19114);
     }
 
     #[test]
     fn test_part2() {
         let game = parse_game(SAMPLE_INPUT).unwrap().1;
 
-        assert_eq!(game.part2(), 167409079868000);
+        assert_eq!(game.part2().unwrap(), 167409079868000);
     }
 
     #[test]
