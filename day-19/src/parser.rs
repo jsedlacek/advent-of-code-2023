@@ -37,7 +37,7 @@ pub fn parse_game(input: &str) -> IResult<&str, Game> {
     )(input)
 }
 
-fn parse_workflow(input: &str) -> IResult<&str, Workflow> {
+pub fn parse_workflow(input: &str) -> IResult<&str, Workflow> {
     // Example: "px{a<2006:qkq,m>2090:A,rfg}"
 
     map(
@@ -135,8 +135,7 @@ mod tests {
             ],
         };
 
-        let result = parse_workflow(input);
-        let (_, workflow) = result.unwrap();
+        let (_, workflow) = parse_workflow(input).unwrap();
         assert_eq!(workflow, expected);
     }
 }

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+const CATEGORIES: [&str; 4] = ["x", "m", "a", "s"];
+
 #[derive(Debug, Clone)]
 pub struct Game {
     pub workflows: HashMap<String, Workflow>,
@@ -7,12 +9,18 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn puzzle(&self) -> u64 {
+    pub fn part1(&self) -> u64 {
         self.ratings
             .iter()
             .filter(|r| r.eval(&self.workflows) == Action::Accept)
             .map(|r| r.value())
             .sum::<u64>()
+    }
+
+    pub fn part2(&self) -> u64 {
+        let workflow = self.workflows.get("in").unwrap();
+
+        workflow.combination_count(&self.workflows, &[])
     }
 }
 
@@ -30,6 +38,36 @@ impl Workflow {
         }
 
         None
+    }
+
+    fn combination_count(
+        &self,
+        workflows: &HashMap<String, Workflow>,
+        prev_conds: &[Condition],
+    ) -> u64 {
+        let mut count = 0;
+
+        let mut prev_conds = prev_conds.to_vec();
+
+        for op in self.ops.iter() {
+            let mut conds = prev_conds.clone();
+
+            if let Some(ref cond) = op.cond {
+                conds.push(cond.clone());
+                prev_conds.push(cond.inverse());
+            }
+
+            count += match op.action {
+                Action::Accept => Condition::combination_count(&conds),
+                Action::Reject => 0,
+                Action::Workflow(ref w) => {
+                    let workflow = workflows.get(w).unwrap();
+                    workflow.combination_count(workflows, &conds)
+                }
+            };
+        }
+
+        count
     }
 }
 
@@ -54,6 +92,7 @@ pub struct Condition {
     pub sign: Sign,
     pub value: u64,
 }
+
 impl Condition {
     fn eval(&self, rating: &Rating) -> bool {
         let var_value = rating.var_value(&self.var);
@@ -61,7 +100,49 @@ impl Condition {
         match self.sign {
             Sign::Greater => var_value > self.value,
             Sign::Less => var_value < self.value,
+            Sign::GreaterEq => var_value >= self.value,
+            Sign::LessEq => var_value <= self.value,
         }
+    }
+
+    fn inverse(&self) -> Self {
+        Self {
+            value: self.value,
+            var: self.var.clone(),
+            sign: match self.sign {
+                Sign::Greater => Sign::LessEq,
+                Sign::Less => Sign::GreaterEq,
+                Sign::GreaterEq => Sign::Less,
+                Sign::LessEq => Sign::Greater,
+            },
+        }
+    }
+
+    fn combination_count(ops: &[Self]) -> u64 {
+        CATEGORIES
+            .iter()
+            .map(|k| {
+                let mut min = 1;
+                let mut max = 4000;
+
+                let key_ops = ops.iter().filter(|o| &o.var == k).collect::<Vec<_>>();
+
+                for op in &key_ops {
+                    match op.sign {
+                        Sign::Greater => min = min.max(op.value + 1),
+                        Sign::Less => max = max.min(op.value - 1),
+                        Sign::GreaterEq => min = min.max(op.value),
+                        Sign::LessEq => max = max.min(op.value),
+                    };
+                }
+
+                if max >= min {
+                    max - min + 1
+                } else {
+                    0
+                }
+            })
+            .product()
     }
 }
 
@@ -69,6 +150,8 @@ impl Condition {
 pub enum Sign {
     Greater,
     Less,
+    GreaterEq,
+    LessEq,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -86,8 +169,6 @@ impl Rating {
         let mut action = Action::Workflow("in".to_string());
 
         while let Action::Workflow(workflow) = action {
-            println!("-> Workflow {workflow}");
-
             let workflow = workflows.get(&workflow).unwrap();
             action = workflow.eval(self).unwrap();
         }
@@ -101,5 +182,65 @@ impl Rating {
 
     fn value(&self) -> u64 {
         self.0.values().sum()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::parse_game;
+
+    use super::*;
+
+    const SAMPLE_INPUT: &str = include_str!("sample-input.txt");
+
+    #[test]
+    fn test_part1() {
+        let game = parse_game(SAMPLE_INPUT).unwrap().1;
+
+        assert_eq!(game.part1(), 19114);
+    }
+
+    #[test]
+    fn test_part2() {
+        let game = parse_game(SAMPLE_INPUT).unwrap().1;
+
+        assert_eq!(game.part2(), 167409079868000);
+    }
+
+    #[test]
+    fn test_combination_count() {
+        assert_eq!(
+            Condition::combination_count(&[Condition {
+                var: "x".to_string(),
+                sign: Sign::Greater,
+                value: 1000,
+            }]),
+            192000000000000
+        );
+
+        assert_eq!(
+            Condition::combination_count(&[Condition {
+                var: "x".to_string(),
+                sign: Sign::Greater,
+                value: 0,
+            }]),
+            256000000000000
+        );
+
+        assert_eq!(
+            Condition::combination_count(
+                &CATEGORIES
+                    .iter()
+                    .map(|k| {
+                        Condition {
+                            var: k.to_string(),
+                            sign: Sign::LessEq,
+                            value: 1,
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            ),
+            1
+        );
     }
 }
