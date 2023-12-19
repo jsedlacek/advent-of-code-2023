@@ -20,7 +20,37 @@ impl Game {
     pub fn part2(&self) -> u64 {
         let workflow = self.workflows.get("in").unwrap();
 
-        workflow.combination_count(&self.workflows, &[])
+        self.combination_count(workflow, &[])
+    }
+
+    fn action_combination_count(&self, action: &Action, conds: &[Condition]) -> u64 {
+        match action {
+            Action::Accept => Condition::combination_count(&conds),
+            Action::Reject => 0,
+            Action::Workflow(ref w) => {
+                let workflow = self.workflows.get(w).unwrap();
+                self.combination_count(workflow, &conds)
+            }
+        }
+    }
+
+    fn combination_count(&self, workflow: &Workflow, prev_conds: &[Condition]) -> u64 {
+        let mut count = 0;
+
+        let mut prev_conds = prev_conds.to_vec();
+
+        for op in workflow.ops.iter() {
+            let mut conds = prev_conds.clone();
+
+            if let Some(ref cond) = op.cond {
+                conds.push(cond.clone());
+                prev_conds.push(cond.inverse());
+            }
+
+            count += self.action_combination_count(&op.action, &conds);
+        }
+
+        count
     }
 }
 
@@ -38,36 +68,6 @@ impl Workflow {
         }
 
         None
-    }
-
-    fn combination_count(
-        &self,
-        workflows: &HashMap<String, Workflow>,
-        prev_conds: &[Condition],
-    ) -> u64 {
-        let mut count = 0;
-
-        let mut prev_conds = prev_conds.to_vec();
-
-        for op in self.ops.iter() {
-            let mut conds = prev_conds.clone();
-
-            if let Some(ref cond) = op.cond {
-                conds.push(cond.clone());
-                prev_conds.push(cond.inverse());
-            }
-
-            count += match op.action {
-                Action::Accept => Condition::combination_count(&conds),
-                Action::Reject => 0,
-                Action::Workflow(ref w) => {
-                    let workflow = workflows.get(w).unwrap();
-                    workflow.combination_count(workflows, &conds)
-                }
-            };
-        }
-
-        count
     }
 }
 
