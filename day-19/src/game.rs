@@ -87,10 +87,7 @@ pub struct Operation {
 
 impl Operation {
     fn eval(&self, rating: &Rating) -> bool {
-        match &self.cond {
-            Some(cond) => cond.eval(rating),
-            None => true,
-        }
+        self.cond.as_ref().map_or(true, |cond| cond.eval(rating))
     }
 }
 
@@ -130,21 +127,18 @@ impl Condition {
         CATEGORIES
             .iter()
             .map(|&category| {
-                let (mut min, mut max) = (1, 4000);
-                for cond in conds.iter().filter(|cond| cond.var == category) {
-                    match cond.sign {
-                        Sign::Greater => min = min.max(cond.value + 1),
-                        Sign::Less => max = max.min(cond.value - 1),
-                        Sign::GreaterEq => min = min.max(cond.value),
-                        Sign::LessEq => max = max.min(cond.value),
-                    }
-                }
-                if min <= max {
-                    max - min + 1
-                } else {
-                    0
-                }
+                conds.iter().filter(|cond| cond.var == category).fold(
+                    (1, 4000),
+                    |(min, max), cond| match cond.sign {
+                        Sign::Greater => (min.max(cond.value + 1), max),
+                        Sign::Less => (min, max.min(cond.value - 1)),
+                        Sign::GreaterEq => (min.max(cond.value), max),
+                        Sign::LessEq => (min, max.min(cond.value)),
+                    },
+                )
             })
+            .filter(|&(min, max)| min <= max)
+            .map(|(min, max)| max - min + 1)
             .product()
     }
 }
