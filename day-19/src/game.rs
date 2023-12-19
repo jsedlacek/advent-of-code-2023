@@ -66,6 +66,7 @@ pub struct Workflow {
     pub name: String,
     pub ops: Vec<Operation>,
 }
+
 impl Workflow {
     fn eval(&self, rating: &Rating) -> Option<Action> {
         for op in &self.ops {
@@ -216,6 +217,8 @@ mod tests {
 
     #[test]
     fn test_combination_count() {
+        assert_eq!(Condition::combination_count(&[]), 256000000000000);
+
         assert_eq!(
             Condition::combination_count(&[Condition {
                 var: "x".to_string(),
