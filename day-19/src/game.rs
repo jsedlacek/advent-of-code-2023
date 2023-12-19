@@ -12,13 +12,13 @@ pub struct Game {
 
 impl Game {
     pub fn part1(&self) -> Result<u64> {
-        self.ratings.iter().try_fold(0, |sum, rating| {
-            Ok(if rating.eval(&self.workflows)? == Action::Accept {
-                sum + rating.value()
-            } else {
-                sum
+        self.ratings
+            .iter()
+            .try_fold(0, |sum, rating| match rating.eval(&self.workflows) {
+                Ok(Action::Accept) => Ok(sum + rating.value()),
+                Ok(_) => Ok(sum),
+                Err(e) => Err(e),
             })
-        })
     }
 
     pub fn part2(&self) -> Result<u64> {
