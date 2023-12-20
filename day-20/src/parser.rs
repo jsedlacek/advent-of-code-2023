@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, newline, space0},
-    combinator::{all_consuming, map},
+    combinator::{all_consuming, map, map_res},
     multi::{many0, separated_list0, separated_list1},
     sequence::{delimited, tuple},
     IResult,
@@ -19,7 +19,7 @@ pub fn parse_input(input: &str) -> Result<Game> {
 }
 
 pub fn parse_game(input: &str) -> IResult<&str, Game> {
-    map(separated_list1(newline, parse_module), Game::new)(input)
+    map_res(separated_list1(newline, parse_module), Game::new)(input)
 }
 
 fn parse_module(input: &str) -> IResult<&str, Module> {
