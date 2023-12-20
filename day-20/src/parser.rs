@@ -31,6 +31,7 @@ fn parse_module(input: &str) -> IResult<&str, Module> {
             |(_, name, _, _, _, outputs)| Module {
                 name: name.to_string(),
                 outputs,
+                received_signals: (0, 0),
                 value: ModuleValue::FlipFlop(FlipFlop::new()),
             },
         ),
@@ -39,6 +40,7 @@ fn parse_module(input: &str) -> IResult<&str, Module> {
             |(_, name, _, _, _, outputs)| Module {
                 name: name.to_string(),
                 outputs,
+                received_signals: (0, 0),
                 value: ModuleValue::Conjunction(Conjunction::new()),
             },
         ),
@@ -47,6 +49,7 @@ fn parse_module(input: &str) -> IResult<&str, Module> {
             |(name, _, _, _, outputs)| Module {
                 name: name.to_string(),
                 outputs,
+                received_signals: (0, 0),
                 value: ModuleValue::Broadcaster,
             },
         ),
@@ -90,6 +93,7 @@ mod test {
                 Module {
                     name: "a".to_string(),
                     outputs: vec!["b".to_string()],
+                    received_signals: (0, 0),
                     value: ModuleValue::FlipFlop(FlipFlop::new()),
                 }
             )
@@ -102,6 +106,7 @@ mod test {
                 Module {
                     name: "inv".to_string(),
                     outputs: vec!["a".to_string()],
+                    received_signals: (0, 0),
                     value: ModuleValue::Conjunction(Conjunction::new()),
                 }
             )
@@ -114,6 +119,7 @@ mod test {
                 Module {
                     name: "broadcaster".to_string(),
                     outputs: vec!["a".to_string(), "b".to_string(), "c".to_string()],
+                    received_signals: (0, 0),
                     value: ModuleValue::Broadcaster,
                 }
             )
