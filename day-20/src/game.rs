@@ -51,15 +51,9 @@ impl Game {
 
         let modules_inputs = modules
             .iter()
-            .map(|m| {
-                inputs
-                    .get(m)
-                    .cloned()
-                    .ok_or(anyhow!("Input not found for module: {}", m))
-            })
-            .collect::<Result<Vec<_>>>()? // handle errors
-            .into_iter()
+            .filter_map(|m| inputs.get(m))
             .flatten()
+            .cloned()
             .collect::<HashSet<_>>() // Unique
             .into_iter()
             .collect::<Vec<_>>(); // Collection into vec
