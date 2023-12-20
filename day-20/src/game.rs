@@ -13,7 +13,7 @@ impl Game {
     pub fn new(mut modules: Vec<Module>) -> Result<Self> {
         let inputs = Self::find_inputs(&modules);
         for module in modules.iter_mut() {
-            if let ModuleValue::Conjunction(c) = &mut module.value {
+            if let ModuleBehavior::Conjunction(c) = &mut module.behavior {
                 let module_names = inputs
                     .get(&module.name)
                     .ok_or(anyhow!("Module not found: {}", &module.name))?;
@@ -143,17 +143,17 @@ impl Game {
 pub struct Module {
     name: String,
     outputs: Vec<String>,
-    value: ModuleValue,
-    received_signals: (u64, u64),
+    behavior: ModuleBehavior,
+    signal_count: (u64, u64),
 }
 
 impl Module {
-    pub fn new(name: String, outputs: Vec<String>, value: ModuleValue) -> Self {
+    pub fn new(name: String, outputs: Vec<String>, behavior: ModuleBehavior) -> Self {
         Self {
-            name: name.to_string(),
+            name,
             outputs,
-            received_signals: (0, 0),
-            value,
+            signal_count: (0, 0),
+            behavior,
         }
     }
 
@@ -163,15 +163,15 @@ impl Module {
         signal: Signal,
     ) -> Result<VecDeque<(String, String, Signal)>> {
         if signal == Signal::Low {
-            self.received_signals.0 += 1;
+            self.signal_count.0 += 1;
         } else {
-            self.received_signals.1 += 1;
+            self.signal_count.1 += 1;
         }
 
         let mut queue = VecDeque::new();
 
-        match &mut self.value {
-            ModuleValue::FlipFlop(flip_flop) => {
+        match &mut self.behavior {
+            ModuleBehavior::FlipFlop(flip_flop) => {
                 if signal == Signal::Low {
                     flip_flop.state = flip_flop.state.flip();
                     let next_signal = match flip_flop.state {
@@ -183,7 +183,7 @@ impl Module {
                     }
                 }
             }
-            ModuleValue::Conjunction(conjunction) => {
+            ModuleBehavior::Conjunction(conjunction) => {
                 let signals = conjunction
                     .incoming_signals
                     .as_mut()
@@ -193,9 +193,7 @@ impl Module {
                     .get_mut(from)
                     .ok_or(anyhow!("Incoming signal not exists: {}", from))?;
 
-                if entry != &signal {
-                    *entry = signal;
-                }
+                *entry = signal;
 
                 let next_signal = if signals.values().all(|s| *s == Signal::High) {
                     Signal::Low
@@ -207,7 +205,7 @@ impl Module {
                     queue.push_back((self.name.clone(), m.clone(), next_signal));
                 }
             }
-            ModuleValue::Broadcaster => {
+            ModuleBehavior::Broadcaster => {
                 for m in &self.outputs {
                     queue.push_back((self.name.clone(), m.clone(), signal));
                 }
@@ -219,7 +217,7 @@ impl Module {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ModuleValue {
+pub enum ModuleBehavior {
     FlipFlop(FlipFlop),
     Conjunction(Conjunction),
     Broadcaster,

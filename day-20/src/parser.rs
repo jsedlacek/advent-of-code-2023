@@ -9,7 +9,7 @@ use nom::{
     IResult,
 };
 
-use crate::game::{Conjunction, FlipFlop, Game, Module, ModuleValue};
+use crate::game::{Conjunction, FlipFlop, Game, Module, ModuleBehavior};
 
 pub fn parse_input(input: &str) -> Result<Game> {
     let (_, game) = all_consuming(delimited(many0(newline), parse_game, many0(newline)))(input)
@@ -30,18 +30,18 @@ fn parse_module(input: &str) -> IResult<&str, Module> {
             Module::new(
                 name.to_string(),
                 outputs,
-                ModuleValue::FlipFlop(FlipFlop::new()),
+                ModuleBehavior::FlipFlop(FlipFlop::new()),
             )
         }),
         map(preceded(tag("&"), parse_line), |(name, outputs)| {
             Module::new(
                 name.to_string(),
                 outputs,
-                ModuleValue::Conjunction(Conjunction::new()),
+                ModuleBehavior::Conjunction(Conjunction::new()),
             )
         }),
         map(parse_line, |(name, outputs)| {
-            Module::new(name.to_string(), outputs, ModuleValue::Broadcaster)
+            Module::new(name.to_string(), outputs, ModuleBehavior::Broadcaster)
         }),
     ))(input)
 }
@@ -74,7 +74,7 @@ mod test {
                 Module::new(
                     "a".to_string(),
                     vec!["b".to_string()],
-                    ModuleValue::FlipFlop(FlipFlop::new()),
+                    ModuleBehavior::FlipFlop(FlipFlop::new()),
                 )
             )
         );
@@ -86,7 +86,7 @@ mod test {
                 Module::new(
                     "inv".to_string(),
                     vec!["a".to_string()],
-                    ModuleValue::Conjunction(Conjunction::new()),
+                    ModuleBehavior::Conjunction(Conjunction::new()),
                 )
             )
         );
@@ -98,7 +98,7 @@ mod test {
                 Module::new(
                     "broadcaster".to_string(),
                     vec!["a".to_string(), "b".to_string(), "c".to_string()],
-                    ModuleValue::Broadcaster,
+                    ModuleBehavior::Broadcaster,
                 )
             )
         );
