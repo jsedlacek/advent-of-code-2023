@@ -1,11 +1,12 @@
 use anyhow::Result;
-use parser::parse_game;
+
+use crate::parser::parse_input;
 
 mod game;
 mod parser;
 
 fn main() -> Result<()> {
-    let (_, mut game) = parse_game(include_str!("input.txt"))?;
+    let mut game = parse_input(include_str!("input.txt"))?;
 
     println!("Part 1: {}", game.part1());
 

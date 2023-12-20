@@ -1,17 +1,22 @@
+use anyhow::Result;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::{
-        complete::{alpha1, space0},
-        streaming::newline,
-    },
-    combinator::map,
-    multi::{separated_list0, separated_list1},
-    sequence::tuple,
+    character::complete::{alpha1, newline, space0},
+    combinator::{all_consuming, map},
+    multi::{many0, separated_list0, separated_list1},
+    sequence::{delimited, tuple},
     IResult,
 };
 
 use crate::game::{Conjunction, FlipFlop, Game, Module, ModuleValue};
+
+pub fn parse_input(input: &str) -> Result<Game> {
+    let (_, game) = all_consuming(delimited(many0(newline), parse_game, many0(newline)))(input)
+        .map_err(|e| e.to_owned())?;
+
+    Ok(game)
+}
 
 pub fn parse_game(input: &str) -> IResult<&str, Game> {
     map(separated_list1(newline, parse_module), Game::new)(input)
