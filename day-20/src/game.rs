@@ -53,9 +53,9 @@ impl Game {
             .iter()
             .filter_map(|m| inputs.get(m))
             .flatten()
-            .cloned()
             .collect::<HashSet<_>>() // Unique
             .into_iter()
+            .map(String::as_str)
             .collect::<Vec<_>>(); // Collection into vec
 
         let mut target_results: HashMap<String, u64> = HashMap::new();
@@ -72,7 +72,7 @@ impl Game {
 
             if modules_inputs
                 .iter()
-                .all(|t| target_results.contains_key(t))
+                .all(|t| target_results.contains_key(&t.to_string()))
             {
                 return Ok(lcm_of_slice(
                     &target_results.values().copied().collect::<Vec<_>>(),
@@ -103,7 +103,7 @@ impl Game {
         module_name: &str,
         signal: Signal,
         mut pulse_count: Option<&mut (u64, u64)>,
-        targets: &[String],
+        targets: &[&str],
     ) -> Result<Vec<String>> {
         let mut res = Vec::new();
 
@@ -120,7 +120,7 @@ impl Game {
                 }
             }
 
-            if targets.contains(&module_name) && signal == Signal::Low {
+            if targets.contains(&module_name.as_str()) && signal == Signal::Low {
                 res.push(module_name.clone());
             }
 
