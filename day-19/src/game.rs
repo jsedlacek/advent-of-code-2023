@@ -14,8 +14,8 @@ impl Game {
     pub fn part1(&self) -> Result<u64> {
         self.ratings
             .iter()
-            .try_fold(0, |sum, rating| match rating.eval(&self.workflows) {
-                Ok(Action::Accept) => Ok(sum + rating.value()),
+            .try_fold(0, |sum, rating| match self.eval_rating(rating) {
+                Ok(Action::Accept) => Ok(sum + rating.sum_of_rating_values()),
                 Ok(_) => Ok(sum),
                 Err(e) => Err(e),
             })
@@ -28,6 +28,23 @@ impl Game {
             .ok_or(anyhow!("Workflow not found: in"))?;
 
         self.ops_combination_count(&workflow.ops, &[])
+    }
+
+    fn eval_rating(&self, rating: &Rating) -> Result<Action> {
+        let mut action = Action::Workflow("in".to_string());
+
+        while let Action::Workflow(workflow) = action {
+            let workflow = self
+                .workflows
+                .get(&workflow)
+                .ok_or(anyhow!("Workflow not found: {workflow}"))?;
+
+            action = workflow
+                .eval(rating)
+                .ok_or(anyhow!("Eval did not find any result"))?;
+        }
+
+        Ok(action)
     }
 
     fn action_combination_count(&self, action: &Action, conds: &[Condition]) -> Result<u64> {
@@ -93,27 +110,27 @@ impl Operation {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Condition {
-    pub var: String,
+    pub category: String,
     pub sign: Sign,
     pub value: u64,
 }
 
 impl Condition {
     fn eval(&self, rating: &Rating) -> bool {
-        let var_value = rating.var_value(&self.var);
+        let category_value = rating.category_value(&self.category);
 
         match self.sign {
-            Sign::Greater => var_value > self.value,
-            Sign::Less => var_value < self.value,
-            Sign::GreaterEq => var_value >= self.value,
-            Sign::LessEq => var_value <= self.value,
+            Sign::Greater => category_value > self.value,
+            Sign::Less => category_value < self.value,
+            Sign::GreaterEq => category_value >= self.value,
+            Sign::LessEq => category_value <= self.value,
         }
     }
 
     fn inverse(&self) -> Self {
         Self {
             value: self.value,
-            var: self.var.clone(),
+            category: self.category.clone(),
             sign: match self.sign {
                 Sign::Greater => Sign::LessEq,
                 Sign::Less => Sign::GreaterEq,
@@ -127,7 +144,7 @@ impl Condition {
         CATEGORIES
             .iter()
             .map(|&category| {
-                conds.iter().filter(|cond| cond.var == category).fold(
+                conds.iter().filter(|cond| cond.category == category).fold(
                     (1, 4000),
                     |(min, max), cond| match cond.sign {
                         Sign::Greater => (min.max(cond.value + 1), max),
@@ -162,27 +179,11 @@ pub enum Action {
 pub struct Rating(pub HashMap<String, u64>);
 
 impl Rating {
-    fn eval(&self, workflows: &HashMap<String, Workflow>) -> Result<Action> {
-        let mut action = Action::Workflow("in".to_string());
-
-        while let Action::Workflow(workflow) = action {
-            let workflow = workflows
-                .get(&workflow)
-                .ok_or(anyhow!("Workflow not found: {workflow}"))?;
-
-            action = workflow
-                .eval(self)
-                .ok_or(anyhow!("Eval did not find any result"))?;
-        }
-
-        Ok(action)
+    fn category_value(&self, category: &str) -> u64 {
+        self.0.get(category).copied().unwrap_or_default()
     }
 
-    fn var_value(&self, var: &str) -> u64 {
-        self.0.get(var).copied().unwrap_or_default()
-    }
-
-    fn value(&self) -> u64 {
+    fn sum_of_rating_values(&self) -> u64 {
         self.0.values().sum()
     }
 }
@@ -215,7 +216,7 @@ mod tests {
 
         assert_eq!(
             Condition::combination_count(&[Condition {
-                var: "x".to_string(),
+                category: "x".to_string(),
                 sign: Sign::Greater,
                 value: 1000,
             }]),
@@ -224,7 +225,7 @@ mod tests {
 
         assert_eq!(
             Condition::combination_count(&[Condition {
-                var: "x".to_string(),
+                category: "x".to_string(),
                 sign: Sign::Greater,
                 value: 0,
             }]),
@@ -237,7 +238,7 @@ mod tests {
                     .iter()
                     .map(|k| {
                         Condition {
-                            var: k.to_string(),
+                            category: k.to_string(),
                             sign: Sign::LessEq,
                             value: 1,
                         }

@@ -77,8 +77,8 @@ fn parse_condition(input: &str) -> IResult<&str, Condition> {
             alt((value(Sign::Less, tag("<")), value(Sign::Greater, tag(">")))),
             u64,
         )),
-        |(var, sign, value)| Condition {
-            var: var.to_string(),
+        |(category, sign, value)| Condition {
+            category: category.to_string(),
             sign,
             value,
         },
@@ -128,7 +128,7 @@ mod tests {
             ops: vec![
                 Operation {
                     cond: Some(Condition {
-                        var: "a".to_string(),
+                        category: "a".to_string(),
                         sign: Sign::Less,
                         value: 2006,
                     }),
@@ -136,7 +136,7 @@ mod tests {
                 },
                 Operation {
                     cond: Some(Condition {
-                        var: "m".to_string(),
+                        category: "m".to_string(),
                         sign: Sign::Greater,
                         value: 2090,
                     }),
