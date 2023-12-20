@@ -14,10 +14,10 @@ impl Game {
         let inputs = Self::find_inputs(&modules);
         for module in modules.iter_mut() {
             if let ModuleBehavior::Conjunction(c) = &mut module.behavior {
-                let module_names = inputs
-                    .get(&module.name)
-                    .ok_or(anyhow!("Module not found: {}", &module.name))?;
-                c.init(module_names);
+                let input_names = inputs.get(&module.name).map_or_else(Vec::new, |names| {
+                    names.iter().map(String::as_str).collect::<Vec<_>>()
+                });
+                c.init(&input_names);
             }
         }
 
@@ -240,11 +240,11 @@ impl Conjunction {
         }
     }
 
-    fn init(&mut self, module_names: &[String]) {
+    fn init(&mut self, input_names: &[&str]) {
         self.incoming_signals = Some(
-            module_names
+            input_names
                 .iter()
-                .map(|name| (name.clone(), Signal::Low))
+                .map(|name| (name.to_string(), Signal::Low))
                 .collect(),
         );
     }
