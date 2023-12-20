@@ -5,7 +5,7 @@ use nom::{
     character::complete::{alpha1, newline, space0},
     combinator::{all_consuming, map, map_res},
     multi::{many0, separated_list0, separated_list1},
-    sequence::{delimited, tuple},
+    sequence::{delimited, preceded, tuple},
     IResult,
 };
 
@@ -26,56 +26,37 @@ fn parse_module(input: &str) -> IResult<&str, Module> {
     // Example: "broadcaster -> a, b, c"
 
     alt((
-        map(
-            tuple((tag("%"), alpha1, space0, tag("->"), space0, parse_outputs)),
-            |(_, name, _, _, _, outputs)| Module {
-                name: name.to_string(),
+        map(preceded(tag("%"), parse_line), |(name, outputs)| {
+            Module::new(
+                name.to_string(),
                 outputs,
-                received_signals: (0, 0),
-                value: ModuleValue::FlipFlop(FlipFlop::new()),
-            },
-        ),
-        map(
-            tuple((tag("&"), alpha1, space0, tag("->"), space0, parse_outputs)),
-            |(_, name, _, _, _, outputs)| Module {
-                name: name.to_string(),
+                ModuleValue::FlipFlop(FlipFlop::new()),
+            )
+        }),
+        map(preceded(tag("&"), parse_line), |(name, outputs)| {
+            Module::new(
+                name.to_string(),
                 outputs,
-                received_signals: (0, 0),
-                value: ModuleValue::Conjunction(Conjunction::new()),
-            },
-        ),
-        map(
-            tuple((alpha1, space0, tag("->"), space0, parse_outputs)),
-            |(name, _, _, _, outputs)| Module {
-                name: name.to_string(),
-                outputs,
-                received_signals: (0, 0),
-                value: ModuleValue::Broadcaster,
-            },
-        ),
+                ModuleValue::Conjunction(Conjunction::new()),
+            )
+        }),
+        map(parse_line, |(name, outputs)| {
+            Module::new(name.to_string(), outputs, ModuleValue::Broadcaster)
+        }),
     ))(input)
+}
 
-    // alt((map(
-    //     tuple((
-    //         tag("%"),
-    //         // alpha1, space0, tag("->"), space0, parse_outputs
-    //     )),
-    //     |(
-    //         _,
-    //         // name, _, _, _, outputs
-    //     )| Module {
-    //         name: "".to_string(),
-    //         outputs: vec![],
-    //         value: ModuleValue::Broadcaster,
-    //     },
-    // )))(input)
+fn parse_line(input: &str) -> IResult<&str, (&str, Vec<String>)> {
+    map(
+        tuple((alpha1, space0, tag("->"), space0, parse_outputs)),
+        |(name, _, _, _, outputs)| (name, outputs),
+    )(input)
 }
 
 fn parse_outputs(input: &str) -> IResult<&str, Vec<String>> {
     // Example: "a, b, c"
 
     separated_list0(tuple((tag(","), space0)), map(alpha1, str::to_string))(input)
-    // todo!()
 }
 
 #[cfg(test)]
@@ -90,12 +71,11 @@ mod test {
             parse_module("%a -> b").unwrap(),
             (
                 "",
-                Module {
-                    name: "a".to_string(),
-                    outputs: vec!["b".to_string()],
-                    received_signals: (0, 0),
-                    value: ModuleValue::FlipFlop(FlipFlop::new()),
-                }
+                Module::new(
+                    "a".to_string(),
+                    vec!["b".to_string()],
+                    ModuleValue::FlipFlop(FlipFlop::new()),
+                )
             )
         );
 
@@ -103,12 +83,11 @@ mod test {
             parse_module("&inv -> a").unwrap(),
             (
                 "",
-                Module {
-                    name: "inv".to_string(),
-                    outputs: vec!["a".to_string()],
-                    received_signals: (0, 0),
-                    value: ModuleValue::Conjunction(Conjunction::new()),
-                }
+                Module::new(
+                    "inv".to_string(),
+                    vec!["a".to_string()],
+                    ModuleValue::Conjunction(Conjunction::new()),
+                )
             )
         );
 
@@ -116,12 +95,11 @@ mod test {
             parse_module("broadcaster -> a, b, c").unwrap(),
             (
                 "",
-                Module {
-                    name: "broadcaster".to_string(),
-                    outputs: vec!["a".to_string(), "b".to_string(), "c".to_string()],
-                    received_signals: (0, 0),
-                    value: ModuleValue::Broadcaster,
-                }
+                Module::new(
+                    "broadcaster".to_string(),
+                    vec!["a".to_string(), "b".to_string(), "c".to_string()],
+                    ModuleValue::Broadcaster,
+                )
             )
         );
     }

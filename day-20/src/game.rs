@@ -141,13 +141,22 @@ impl Game {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
-    pub name: String,
-    pub outputs: Vec<String>,
-    pub value: ModuleValue,
-    pub received_signals: (u64, u64),
+    name: String,
+    outputs: Vec<String>,
+    value: ModuleValue,
+    received_signals: (u64, u64),
 }
 
 impl Module {
+    pub fn new(name: String, outputs: Vec<String>, value: ModuleValue) -> Self {
+        Self {
+            name: name.to_string(),
+            outputs,
+            received_signals: (0, 0),
+            value,
+        }
+    }
+
     fn process_signal(
         &mut self,
         from: &str,
@@ -218,7 +227,7 @@ pub enum ModuleValue {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlipFlop {
-    pub state: State,
+    state: State,
 }
 
 impl FlipFlop {
@@ -229,7 +238,7 @@ impl FlipFlop {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Conjunction {
-    pub incoming_signals: Option<HashMap<String, Signal>>,
+    incoming_signals: Option<HashMap<String, Signal>>,
 }
 
 impl Conjunction {
