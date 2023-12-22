@@ -12,6 +12,7 @@ pub struct Game {
 impl Game {
     pub fn new(mut modules: Vec<Module>) -> Result<Self> {
         let inputs = Self::find_inputs(&modules);
+
         for module in modules.iter_mut() {
             if let ModuleBehavior::Conjunction(c) = &mut module.behavior {
                 let input_names = inputs.get(&module.name).map_or_else(Vec::new, |names| {
