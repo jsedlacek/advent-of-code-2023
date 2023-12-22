@@ -110,7 +110,6 @@ impl Brick {
     }
 
     fn fall(&mut self) {
-        // println!("Brick falling {:?}", &self);
         self.start.2 -= 1;
         self.end.2 -= 1;
     }
