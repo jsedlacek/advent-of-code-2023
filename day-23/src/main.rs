@@ -47,7 +47,12 @@ impl Game {
         })(input)
     }
 
-    fn find_longest_path(&self, start_pos: Position, end_pos: Position) -> u64 {
+    fn find_longest_path(
+        &self,
+        start_pos: Position,
+        end_pos: Position,
+        ignore_direction: bool,
+    ) -> u64 {
         let mut queue = VecDeque::new();
 
         let mut max_len = 0;
@@ -71,7 +76,7 @@ impl Game {
 
                 loop {
                     let positions = self
-                        .find_pos_options(current_pos)
+                        .find_pos_options(current_pos, ignore_direction)
                         .into_iter()
                         .filter(|p| Some(*p) != prev_pos)
                         .filter(|p| !next_visited.contains(p))
@@ -102,43 +107,60 @@ impl Game {
         max_len as u64
     }
 
-    fn part1(&self) -> u64 {
-        let start_pos = *self
+    fn find_start(&self) -> Position {
+        *self
             .map
             .iter()
             .filter(|(_, &tile)| tile == Tile::Path)
             .min_by_key(|(Position(_, y), _)| y)
             .unwrap()
-            .0;
+            .0
+    }
 
-        let end_pos = *self
+    fn find_end(&self) -> Position {
+        *self
             .map
             .iter()
             .filter(|(_, &tile)| tile == Tile::Path)
             .max_by_key(|(Position(_, y), _)| y)
             .unwrap()
-            .0;
-
-        self.find_longest_path(start_pos, end_pos)
+            .0
     }
 
-    fn find_pos_options(&self, pos: Position) -> Vec<Position> {
+    fn part1(&self) -> u64 {
+        let (start_pos, end_pos) = (self.find_start(), self.find_end());
+
+        self.find_longest_path(start_pos, end_pos, false)
+    }
+
+    fn part2(&self) -> u64 {
+        let (start_pos, end_pos) = (self.find_start(), self.find_end());
+
+        self.find_longest_path(start_pos, end_pos, true)
+    }
+
+    fn find_pos_options(&self, pos: Position, ignore_direction: bool) -> Vec<Position> {
         let dirs = match self.map.get(&pos) {
-            // Some(Tile::Path) => [
-            //     Direction::Left,
-            //     Direction::Down,
-            //     Direction::Right,
-            //     Direction::Up,
-            // ]
-            // .to_vec(),
-            // Some(Tile::Slope(dir)) => [*dir].to_vec(),
-            Some(Tile::Path) | Some(Tile::Slope(_)) => [
+            Some(Tile::Path) => [
                 Direction::Left,
                 Direction::Down,
                 Direction::Right,
                 Direction::Up,
             ]
             .to_vec(),
+            Some(Tile::Slope(dir)) => {
+                if ignore_direction {
+                    [
+                        Direction::Left,
+                        Direction::Down,
+                        Direction::Right,
+                        Direction::Up,
+                    ]
+                    .to_vec()
+                } else {
+                    [*dir].to_vec()
+                }
+            }
             _ => vec![],
         };
 
@@ -191,5 +213,6 @@ enum Direction {
 fn main() {
     let game = Game::parse(include_str!("input.txt")).unwrap().1;
 
-    dbg!(game.part1());
+    println!("Part 1: {}", game.part1());
+    println!("Part 2: {}", game.part2());
 }
