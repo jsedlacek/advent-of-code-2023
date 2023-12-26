@@ -57,9 +57,9 @@ impl Game {
 
         let mut max_len = 0;
 
-        queue.push_back(((None, start_pos), HashSet::new()));
+        queue.push_back((start_pos, HashSet::new()));
 
-        while let Some(((prev_pos, pos), visited)) = queue.pop_back() {
+        while let Some((pos, visited)) = queue.pop_back() {
             let new_len = visited.len();
 
             if pos == end_pos {
@@ -68,38 +68,35 @@ impl Game {
                 }
             }
 
-            let (next_pos, positions, next_visited) = {
-                let mut current_pos = pos;
-                let mut next_visited = HashSet::new();
+            let mut visited = visited.clone();
 
-                next_visited.insert(pos);
+            let positions = {
+                let mut current_pos = pos;
+
+                visited.insert(pos);
 
                 loop {
                     let positions = self
                         .find_pos_options(current_pos, ignore_direction)
                         .into_iter()
-                        .filter(|p| Some(*p) != prev_pos)
-                        .filter(|p| !next_visited.contains(p))
+                        .filter(|p| !visited.contains(p))
                         .collect::<Vec<_>>();
 
                     if let [p] = positions[..] {
                         if p != end_pos {
                             current_pos = p;
-                            next_visited.insert(current_pos);
+                            visited.insert(current_pos);
                             continue;
                         }
                     }
 
-                    break (current_pos, positions, next_visited);
+                    break positions;
                 }
             };
 
-            let mut visited = visited.clone();
-            visited.extend(next_visited);
-
             for p in positions {
                 if !visited.contains(&p) {
-                    queue.push_back(((Some(next_pos), p), visited.clone()));
+                    queue.push_back((p, visited.clone()));
                 }
             }
         }
