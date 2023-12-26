@@ -1,3 +1,6 @@
+use std::io::Write;
+use std::process::{Command, Stdio};
+
 use nom::{
     bytes::complete::tag,
     character::complete::{i64, newline, space0},
@@ -9,7 +12,7 @@ use nom::{
 
 #[derive(Debug)]
 struct Game {
-    list: Vec<Line>,
+    lines: Vec<Line>,
 }
 
 impl Game {
@@ -19,42 +22,106 @@ impl Game {
                 newline,
                 map(
                     separated_pair(
-                        map(Point3D::parse, Point3D::to_2d),
+                        Point3D::parse,
                         tuple((space0, tag("@"), space0)),
-                        map(Point3D::parse, Point3D::to_2d),
+                        Point3D::parse,
                     ),
                     |(p, v)| Line(p, v),
                 ),
             ),
-            |list| Self { list },
+            |lines| Self { lines },
         )(input)
     }
 
     fn part1(&self) -> u64 {
         let range = (200000000000000.0, 400000000000000.0);
 
-        self.list
+        self.lines
             .iter()
             .enumerate()
             .flat_map(|(i1, l1)| {
-                self.list
+                self.lines
                     .iter()
                     .enumerate()
                     .filter(move |(i2, _)| i1 < *i2)
-                    .filter_map(|(i1, l2)| l1.intersect(l2))
+                    .filter_map(|(_, l2)| l1.intersect_2d(l2))
                     .filter(|p| {
                         p.0 >= range.0 && p.0 <= range.1 && p.1 >= range.0 && p.1 <= range.1
                     })
             })
             .count() as u64
     }
+
+    fn declare_const(name: &str) -> String {
+        format!("(declare-const {name} Int)")
+    }
+
+    fn assert(eq: &str) -> String {
+        format!("(assert ({eq}))")
+    }
+
+    fn get_z3_command(&self) -> String {
+        let mut res = Vec::new();
+
+        res.push(Self::declare_const("x"));
+        res.push(Self::declare_const("y"));
+        res.push(Self::declare_const("z"));
+
+        res.push(Self::declare_const("vx"));
+        res.push(Self::declare_const("vy"));
+        res.push(Self::declare_const("vz"));
+
+        for (index, _) in self.lines.iter().take(3).enumerate() {
+            res.push(Self::declare_const(&format!("t{index}")));
+        }
+
+        for (index, line) in self.lines.iter().take(3).enumerate() {
+            res.push(Self::assert(&format!(
+                "= (+ {} (* t{} {})) (+ x (* t{} vx))",
+                line.0 .0, index, line.1 .0, index,
+            )));
+
+            res.push(Self::assert(&format!(
+                "= (+ {} (* t{} {})) (+ y (* t{} vy))",
+                line.0 .1, index, line.1 .1, index,
+            )));
+
+            res.push(Self::assert(&format!(
+                "= (+ {} (* t{} {})) (+ z (* t{} vz))",
+                line.0 .2, index, line.1 .2, index,
+            )));
+        }
+
+        res.push(format!("(check-sat)"));
+        res.push(format!("(eval (+ (+ x y) z))"));
+
+        res.join("\n")
+    }
+
+    fn part2(&self) -> u64 {
+        let mut child = Command::new("z3")
+            .args(["-in"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+
+        if let Some(ref mut stdin) = child.stdin {
+            stdin.write_all(self.get_z3_command().as_bytes()).unwrap();
+        }
+
+        let output = child.wait_with_output().unwrap();
+        let output = String::from_utf8_lossy(&output.stdout);
+
+        output.lines().last().unwrap().parse::<u64>().unwrap()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Line(Point2D, Point2D);
+struct Line(Point3D, Point3D);
 
 impl Line {
-    fn intersect(&self, other: &Self) -> Option<Point2D> {
+    fn intersect_2d(&self, other: &Self) -> Option<Point3D> {
         let Self(p_a, v_a) = *self;
         let Self(p_b, v_b) = *other;
 
@@ -71,12 +138,13 @@ impl Line {
             return None;
         }
 
-        Some(Point2D(p_a.0 + t_a * v_a.0, p_a.1 + t_a * v_a.1))
+        Some(Point3D(
+            p_a.0 + t_a * v_a.0,
+            p_a.1 + t_a * v_a.1,
+            0.0, /* z is ignored for 2D case */
+        ))
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Point2D(f64, f64);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Point3D(f64, f64, f64);
@@ -88,16 +156,11 @@ impl Point3D {
             |(x, _, _, y, _, _, z)| Self(x as f64, y as f64, z as f64),
         )(input)
     }
-
-    fn to_2d(self) -> Point2D {
-        let Self(x, y, _) = self;
-
-        Point2D(x, y)
-    }
 }
 
 fn main() {
     let game = Game::parse(include_str!("input.txt")).unwrap().1;
 
-    dbg!(game.part1());
+    println!("Part 1: {}", game.part1());
+    println!("Part 2: {}", game.part2());
 }
