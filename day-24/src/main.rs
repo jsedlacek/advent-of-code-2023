@@ -76,19 +76,18 @@ impl Game {
         }
 
         for (index, line) in self.lines.iter().take(3).enumerate() {
+            let Line(Point3D(x, y, z), Point3D(vx, vy, vz)) = line;
+
             res.push(Self::assert(&format!(
-                "= (+ {} (* t{} {})) (+ x (* t{} vx))",
-                line.0 .0, index, line.1 .0, index,
+                "= (+ {x} (* t{index} {vx})) (+ x (* t{index} vx))",
             )));
 
             res.push(Self::assert(&format!(
-                "= (+ {} (* t{} {})) (+ y (* t{} vy))",
-                line.0 .1, index, line.1 .1, index,
+                "= (+ {y} (* t{index} {vy})) (+ y (* t{index} vy))",
             )));
 
             res.push(Self::assert(&format!(
-                "= (+ {} (* t{} {})) (+ z (* t{} vz))",
-                line.0 .2, index, line.1 .2, index,
+                "= (+ {z} (* t{index} {vz})) (+ z (* t{index} vz))",
             )));
         }
 
